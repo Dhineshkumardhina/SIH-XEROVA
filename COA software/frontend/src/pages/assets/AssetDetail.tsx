@@ -189,7 +189,7 @@ export const AssetDetail: React.FC = () => {
                 </div>
                 <div className="flex items-baseline gap-3">
                   <span className="text-5xl font-extrabold font-mono text-slate-100">
-                    {prediction ? prediction.risk_score.toFixed(1) : '0.0'}
+                    {prediction ? (Number(prediction.risk_score) || 0).toFixed(1) : '0.0'}
                   </span>
                   <span className="text-xl text-slate-500 font-mono">/ 100</span>
                   <span
@@ -206,29 +206,29 @@ export const AssetDetail: React.FC = () => {
                 <div>
                   <div className="text-[11px] text-slate-400 font-medium">Failure Risk Est.</div>
                   <div className="text-xl font-bold font-mono text-amber-400 mt-0.5">
-                    {prediction ? Math.round(prediction.failure_probability * 100) : 0}%
+                    {prediction ? Math.round((Number(prediction.failure_probability) || 0) * 100) : 0}%
                   </div>
-                  <div className="text-[10px] text-slate-500">{prediction?.horizon_days || 30}d window</div>
+                  <div className="text-[10px] text-slate-500">{prediction?.horizon_days ?? 30}d window</div>
                 </div>
                 <div>
                   <div className="text-[11px] text-slate-400 font-medium">Health Score</div>
                   <div
                     className={`text-xl font-bold font-mono mt-0.5 ${
-                      asset.health_score > 70
+                      (asset.health_score ?? 100) > 70
                         ? 'text-emerald-400'
-                        : asset.health_score > 45
+                        : (asset.health_score ?? 100) > 45
                         ? 'text-amber-400'
                         : 'text-red-400'
                     }`}
                   >
-                    {asset.health_score}%
+                    {asset.health_score ?? 100}%
                   </div>
                   <div className="text-[10px] text-slate-500">Telemetry status</div>
                 </div>
                 <div>
                   <div className="text-[11px] text-slate-400 font-medium">Criticality</div>
                   <div className="text-xl font-bold font-mono text-slate-200 mt-0.5">
-                    {asset.criticality_score}
+                    {asset.criticality_score ?? 1}
                   </div>
                   <div className="text-[10px] text-slate-500">Asset impact</div>
                 </div>

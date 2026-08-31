@@ -66,12 +66,13 @@ export const RiskTrendChart: React.FC<RiskTrendChartProps> = ({ history, height 
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
                   const data = payload[0].payload
+                  const score = Number(data.riskScore) || 0
                   return (
                     <div className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 shadow-xl text-xs space-y-1">
                       <div className="font-semibold text-slate-200">{data.date}</div>
                       <div className="flex items-center gap-2 font-mono">
                         <span className="text-slate-400">Risk Score:</span>
-                        <span className="font-bold text-amber-400">{data.riskScore.toFixed(1)} / 100</span>
+                        <span className="font-bold text-amber-400">{score.toFixed(1)} / 100</span>
                       </div>
                       <div className="flex items-center gap-2 font-mono">
                         <span className="text-slate-400">Status:</span>
@@ -86,12 +87,12 @@ export const RiskTrendChart: React.FC<RiskTrendChartProps> = ({ history, height 
                               : 'text-emerald-400'
                           }`}
                         >
-                          {data.riskLevel}
+                          {data.riskLevel || 'LOW'}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 font-mono text-[11px] text-slate-400">
-                        <span>Failure Est: {data.failureProb}%</span>
-                        <span>({data.horizon}d horizon)</span>
+                        <span>Failure Est: {data.failureProb ?? 0}%</span>
+                        <span>({data.horizon ?? 30}d horizon)</span>
                       </div>
                     </div>
                   )

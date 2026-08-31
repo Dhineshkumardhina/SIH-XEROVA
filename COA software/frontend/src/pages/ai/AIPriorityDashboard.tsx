@@ -46,26 +46,29 @@ export const AIPriorityDashboard: React.FC = () => {
   }
 
   const columns: Column<AIPriorityPrediction>[] = [
-    { key: 'priority_score', header: 'Score', sortable: true, render: (item) => (
-      <div className="flex flex-col">
-        <span className="font-mono text-lg font-bold">{item.priority_score.toFixed(1)}</span>
-        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full inline-block mt-1 w-max ${
-          item.priority_level === 'CRITICAL' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-          item.priority_level === 'HIGH' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-          item.priority_level === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
-          'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-        }`}>
-          {item.priority_level}
-        </span>
-      </div>
-    )},
+    { key: 'priority_score', header: 'Score', sortable: true, render: (item) => {
+      const score = Number(item.priority_score) || 0
+      return (
+        <div className="flex flex-col">
+          <span className="font-mono text-lg font-bold">{score.toFixed(1)}</span>
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full inline-block mt-1 w-max ${
+            item.priority_level === 'CRITICAL' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+            item.priority_level === 'HIGH' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+            item.priority_level === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+            'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+          }`}>
+            {item.priority_level || 'NORMAL'}
+          </span>
+        </div>
+      )
+    }},
     { key: 'task_id', header: 'Task Ref', className: 'font-mono text-blue-400', render: (item) => (
       <Link to={`/ai/priority/${item.task_id}`} className="hover:underline flex items-center gap-1">
         {item.task_id}
       </Link>
     )},
     { key: 'recommendation', header: 'AI Recommendation', render: (item) => (
-      <span className="text-sm text-slate-300">{item.recommendation}</span>
+      <span className="text-sm text-slate-300">{item.recommendation || 'Standard protocol'}</span>
     )},
     { key: 'actions', header: '', render: (item) => (
       <Button variant="outline" size="sm" onClick={() => navigate(`/ai/priority/${item.task_id}`)}>
@@ -74,8 +77,10 @@ export const AIPriorityDashboard: React.FC = () => {
     )}
   ]
 
-  const criticalCount = predictions.filter(p => p.priority_level === 'CRITICAL').length
-  const avgScore = predictions.length > 0 ? (predictions.reduce((acc, p) => acc + p.priority_score, 0) / predictions.length).toFixed(1) : '0.0'
+  const safePredictions = Array.isArray(predictions) ? predictions : []
+  const criticalCount = safePredictions.filter(p => p.priority_level === 'CRITICAL').length
+  const avgScore = safePredictions.length > 0 ? (safePredictions.reduce((acc, p) => acc + (Number(p.priority_score) || 0), 0) / safePredictions.length).toFixed(1) : '0.0'
+
 
   return (
     <div className="space-y-6 pb-20">

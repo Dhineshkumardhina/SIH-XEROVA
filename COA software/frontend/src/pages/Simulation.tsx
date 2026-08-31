@@ -329,29 +329,29 @@ export const SimulationPage: React.FC<SimulationPageProps> = ({ subModule = 'dig
           <Card>
             <div className="p-3">
               <p className="text-[10px] text-slate-400 uppercase">Active Trains</p>
-              <p className="text-xl font-bold text-slate-100 mt-0.5">{simState.metrics.active_trains}</p>
-              <p className="text-[10px] text-slate-500">{simState.metrics.completed_trains} completed</p>
+              <p className="text-xl font-bold text-slate-100 mt-0.5">{simState.metrics?.active_trains ?? 0}</p>
+              <p className="text-[10px] text-slate-500">{simState.metrics?.completed_trains ?? 0} completed</p>
             </div>
           </Card>
           <Card>
             <div className="p-3">
               <p className="text-[10px] text-slate-400 uppercase">Active Blocks</p>
-              <p className="text-xl font-bold text-purple-400 mt-0.5">{simState.metrics.active_blocks}</p>
-              <p className="text-[10px] text-purple-300/80">{simState.metrics.completed_blocks} released</p>
+              <p className="text-xl font-bold text-purple-400 mt-0.5">{simState.metrics?.active_blocks ?? 0}</p>
+              <p className="text-[10px] text-purple-300/80">{simState.metrics?.completed_blocks ?? 0} released</p>
             </div>
           </Card>
           <Card>
             <div className="p-3">
               <p className="text-[10px] text-slate-400 uppercase">Maintenance Tasks</p>
-              <p className="text-xl font-bold text-blue-400 mt-0.5">{simState.metrics.active_maintenance_tasks}</p>
-              <p className="text-[10px] text-blue-300/80">{simState.metrics.completed_maintenance_tasks} completed</p>
+              <p className="text-xl font-bold text-blue-400 mt-0.5">{simState.metrics?.active_maintenance_tasks ?? 0}</p>
+              <p className="text-[10px] text-blue-300/80">{simState.metrics?.completed_maintenance_tasks ?? 0} completed</p>
             </div>
           </Card>
           <Card>
             <div className="p-3">
               <p className="text-[10px] text-slate-400 uppercase">Conflicts Detected</p>
-              <p className={`text-xl font-bold mt-0.5 ${simState.metrics.conflicts_detected > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                {simState.metrics.conflicts_detected}
+              <p className={`text-xl font-bold mt-0.5 ${(simState.metrics?.conflicts_detected ?? 0) > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                {simState.metrics?.conflicts_detected ?? 0}
               </p>
               <p className="text-[10px] text-slate-500">Auto signal protection</p>
             </div>
@@ -359,16 +359,16 @@ export const SimulationPage: React.FC<SimulationPageProps> = ({ subModule = 'dig
           <Card>
             <div className="p-3">
               <p className="text-[10px] text-slate-400 uppercase">Total Train Delay</p>
-              <p className={`text-xl font-bold mt-0.5 ${simState.metrics.total_train_delay_minutes > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                {simState.metrics.total_train_delay_minutes} min
+              <p className={`text-xl font-bold mt-0.5 ${(simState.metrics?.total_train_delay_minutes ?? 0) > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                {simState.metrics?.total_train_delay_minutes ?? 0} min
               </p>
-              <p className="text-[10px] text-slate-500">{simState.metrics.delayed_trains} delayed trains</p>
+              <p className="text-[10px] text-slate-500">{simState.metrics?.delayed_trains ?? 0} delayed trains</p>
             </div>
           </Card>
           <Card>
             <div className="p-3">
               <p className="text-[10px] text-slate-400 uppercase">Track Availability</p>
-              <p className="text-xl font-bold text-emerald-300 mt-0.5">{simState.metrics.asset_availability_pct}%</p>
+              <p className="text-xl font-bold text-emerald-300 mt-0.5">{simState.metrics?.asset_availability_pct ?? 100}%</p>
               <p className="text-[10px] text-emerald-400/80">Operational Uptime</p>
             </div>
           </Card>

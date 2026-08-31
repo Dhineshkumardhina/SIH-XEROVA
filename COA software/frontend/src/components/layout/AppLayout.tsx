@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { TopNavigation } from './TopNavigation'
 import { GlobalSearchModal } from '../navigation/GlobalSearchModal'
+import { ErrorBoundary } from './ErrorBoundary'
 import { useUIStore } from '../../store/uiStore'
 import { cn } from '../../shared/utils'
 
@@ -24,7 +25,9 @@ export const AppLayout: React.FC = () => {
         <TopNavigation />
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-          <Outlet />
+          <ErrorBoundary isPageLevel fallbackTitle="Page Error">
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
 
@@ -35,3 +38,4 @@ export const AppLayout: React.FC = () => {
 }
 
 export default AppLayout
+

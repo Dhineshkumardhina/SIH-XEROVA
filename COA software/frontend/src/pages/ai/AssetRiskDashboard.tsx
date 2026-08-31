@@ -178,22 +178,25 @@ export const AssetRiskDashboard: React.FC = () => {
       key: 'risk_score',
       header: 'Risk Score',
       sortable: true,
-      render: (item) => (
-        <div className="flex items-center gap-2">
-          <span className="font-mono font-bold text-sm text-slate-100">{item.risk_score.toFixed(1)}</span>
-          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${getRiskBadge(item.risk_level)}`}>
-            {item.risk_level}
-          </span>
-        </div>
-      )
+      render: (item) => {
+        const score = Number(item.risk_score) || 0
+        return (
+          <div className="flex items-center gap-2">
+            <span className="font-mono font-bold text-sm text-slate-100">{score.toFixed(1)}</span>
+            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${getRiskBadge(item.risk_level)}`}>
+              {item.risk_level || 'LOW'}
+            </span>
+          </div>
+        )
+      }
     },
     {
       key: 'failure_probability',
       header: 'Failure Risk Est.',
       render: (item) => (
         <div className="font-mono text-xs font-semibold text-amber-300">
-          {Math.round(item.failure_probability * 100)}%
-          <span className="text-[10px] text-slate-500 font-normal ml-1">({item.horizon_days}d)</span>
+          {Math.round((Number(item.failure_probability) || 0) * 100)}%
+          <span className="text-[10px] text-slate-500 font-normal ml-1">({item.horizon_days ?? 30}d)</span>
         </div>
       )
     },
@@ -229,13 +232,14 @@ export const AssetRiskDashboard: React.FC = () => {
     }
   ]
 
-  const filteredAssets = assets.filter((a) => {
+  const safeAssets = Array.isArray(assets) ? assets : []
+  const filteredAssets = safeAssets.filter((a) => {
     if (!search) return true
     const q = search.toLowerCase()
     return (
-      a.asset_code.toLowerCase().includes(q) ||
-      a.asset_name.toLowerCase().includes(q) ||
-      a.asset_type.toLowerCase().includes(q)
+      a.asset_code?.toLowerCase().includes(q) ||
+      a.asset_name?.toLowerCase().includes(q) ||
+      a.asset_type?.toLowerCase().includes(q)
     )
   })
 
