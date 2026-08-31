@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # 1. Frontend Web Service (React + Vite + Nginx)
+  # ============================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api/v1
+    container_name: railopt_frontend
+    ports:
+      - "3000:80"
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - railopt_network
+
+  # ============================================================================
+  # 2. Backend API Service (FastAPI + OR-Tools + AI Engines)
+  # ============================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: railopt_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DEMO_MODE=true
+      - DATABASE_URL=postgresql+psycopg://railopt_user:railopt_password@postgres:5432/railopt_db
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET=railopt_ai_super_secret_jwt_key_2026_change_in_production
+      - CORS_ORIGINS=["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000", "http://127.0.0.1:5173"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - railopt_network
+
+  # ============================================================================
+  # 3. Relational Database (PostgreSQL + PostGIS)
+  # ============================================================================
+  postgres:
+    image: postgis/postgis:15-3.3-alpine
+    container_name: railopt_postgres
+    environment:
+      POSTGRES_USER: railopt_user
+      POSTGRES_PASSWORD: railopt_password
+      POSTGRES_DB: railopt_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U railopt_user -d railopt_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - railopt_network
+
+  # ============================================================================
+  # 4. In-Memory Cache & Pub/Sub Event Broker (Redis)
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: railopt_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - railopt_network
+
+volumes:
+  postgres_data:
+    name: railopt_postgres_data
+  redis_data:
+    name: railopt_redis_data
+
+networks:
+  railopt_network:
+    name: railopt_network
+    driver: bridge
