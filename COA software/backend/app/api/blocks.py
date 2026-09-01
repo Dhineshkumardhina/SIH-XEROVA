@@ -273,7 +273,8 @@ def get_block_plans(
     page_size: int = Query(25, ge=1, le=100),
     corridor: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_authenticated_user)
 ):
     target_page = page or 1
     items, meta = block_service.list_block_plans(

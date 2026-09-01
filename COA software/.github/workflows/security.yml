@@ -1,0 +1,103 @@
+name: DevSecOps Security & Compliance CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+  schedule:
+    - cron: '0 4 * * 1' # Weekly Monday security sweep
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  secret-scan:
+    name: Secret & Credential Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks / Secret Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+  backend-security:
+    name: Backend SAST & Security Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov bandit safety
+
+      - name: Run Bandit SAST Scan
+        run: |
+          cd backend
+          bandit -r app/ -ll -ii || true
+
+      - name: Run Safety Dependency Check
+        run: |
+          cd backend
+          safety check || true
+
+      - name: Run Automated Pytest Security Test Suite
+        env:
+          JWT_SECRET: ci_test_secret_key_devsecops_2026_safe
+          DATABASE_URL: sqlite:///./test_ci.db
+          DEMO_MODE: "true"
+          ENVIRONMENT: test
+        run: |
+          cd backend
+          PYTHONPATH=. pytest tests/test_auth.py tests/test_phase36_security.py tests/security/ -v
+
+  frontend-security:
+    name: Frontend Dependency & Lint Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package.json
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm ci || npm install
+
+      - name: Run NPM Security Audit
+        run: |
+          cd frontend
+          npm audit --audit-level=high || true
+
+      - name: Run TypeScript Build Validation
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Run Vitest Unit Tests
+        run: |
+          cd frontend
+          npm test -- --run

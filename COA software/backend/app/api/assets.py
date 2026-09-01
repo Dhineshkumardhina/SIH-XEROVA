@@ -13,8 +13,6 @@ from app.services import asset_service
 
 router = APIRouter(prefix="/assets", tags=["Assets"])
 
-from app.core.response import StandardResponse
-
 @router.get("", summary="List assets with filtering and pagination")
 def get_assets(
     request: Request,
@@ -58,15 +56,11 @@ def get_assets(
 
     serialized = [AssetResponse.model_validate(a) for a in items]
 
-    # If page parameter is not explicitly given, maintain legacy raw list response for compatibility
     if page is None:
         return serialized
 
-    return StandardResponse(
-        data=PaginatedResponse(
-            data=PaginatedData(items=serialized, pagination=meta),
-            message="Assets retrieved successfully"
-        ),
+    return PaginatedResponse(
+        data=PaginatedData(items=serialized, pagination=meta),
         message="Assets retrieved successfully"
     )
 
@@ -76,7 +70,7 @@ def get_asset(
     db: Session = Depends(get_db)
 ):
     asset = asset_service.get_asset_by_id(db, asset_id)
-    return StandardResponse(
+    return ApiResponse(
         data=AssetResponse.model_validate(asset),
         message="Asset retrieved successfully"
     )
@@ -88,7 +82,7 @@ def create_asset(
     current_user: User = Depends(require_permission("ASSET_CREATE"))
 ):
     asset = asset_service.create_asset(db, payload, user_id=current_user.id)
-    return StandardResponse(
+    return ApiResponse(
         data=AssetResponse.model_validate(asset),
         message="Asset created successfully"
     )
@@ -101,7 +95,7 @@ def update_asset(
     current_user: User = Depends(require_permission("ASSET_UPDATE"))
 ):
     asset = asset_service.update_asset(db, asset_id, payload, user_id=current_user.id)
-    return StandardResponse(
+    return ApiResponse(
         data=AssetResponse.model_validate(asset),
         message="Asset updated successfully"
     )
@@ -123,11 +117,8 @@ def get_asset_defects(
     db: Session = Depends(get_db)
 ):
     items, meta = asset_service.get_asset_defects(db, asset_id, page=page, page_size=page_size)
-    return StandardResponse(
-        data=PaginatedResponse(
-            data=PaginatedData(items=[DefectResponse.model_validate(d) for d in items], pagination=meta),
-            message="Asset defects retrieved successfully"
-        ),
+    return PaginatedResponse(
+        data=PaginatedData(items=[DefectResponse.model_validate(d) for d in items], pagination=meta),
         message="Asset defects retrieved successfully"
     )
 
@@ -139,11 +130,8 @@ def get_asset_maintenance(
     db: Session = Depends(get_db)
 ):
     items, meta = asset_service.get_asset_maintenance(db, asset_id, page=page, page_size=page_size)
-    return StandardResponse(
-        data=PaginatedResponse(
-            data=PaginatedData(items=[MaintenanceTaskResponse.model_validate(m) for m in items], pagination=meta),
-            message="Asset maintenance tasks retrieved successfully"
-        ),
+    return PaginatedResponse(
+        data=PaginatedData(items=[MaintenanceTaskResponse.model_validate(m) for m in items], pagination=meta),
         message="Asset maintenance tasks retrieved successfully"
     )
 
@@ -155,11 +143,8 @@ def get_asset_history(
     db: Session = Depends(get_db)
 ):
     items, meta = asset_service.get_asset_history(db, asset_id, page=page, page_size=page_size)
-    return StandardResponse(
-        data=PaginatedResponse(
-            data=PaginatedData(items=[{"id": h.id, "action_taken": h.action_taken, "completed_at": h.completed_at} for h in items], pagination=meta),
-            message="Asset maintenance history retrieved successfully"
-        ),
+    return PaginatedResponse(
+        data=PaginatedData(items=[{"id": h.id, "action_taken": h.action_taken, "completed_at": h.completed_at} for h in items], pagination=meta),
         message="Asset maintenance history retrieved successfully"
     )
 
@@ -169,7 +154,7 @@ def get_asset_health(
     db: Session = Depends(get_db)
 ):
     health = asset_service.get_asset_health(db, asset_id)
-    return StandardResponse(
+    return ApiResponse(
         data=health,
         message="Asset health retrieved successfully"
     )
@@ -180,7 +165,7 @@ def get_asset_risk(
     db: Session = Depends(get_db)
 ):
     risk = asset_service.get_asset_risk(db, asset_id)
-    return StandardResponse(
+    return ApiResponse(
         data=risk,
         message="Asset risk retrieved successfully"
     )

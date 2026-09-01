@@ -55,8 +55,13 @@ def test_case_3_viewer_attempts_block_approval():
     viewer_token = login_res.json()["data"]["access_token"]
 
     # Fetch a block plan
-    plan_res = client.get("/api/v1/blocks")
+    plan_res = client.get(
+        "/api/v1/blocks",
+        headers={"Authorization": f"Bearer {viewer_token}"}
+    )
     plans = plan_res.json()
+    if isinstance(plans, dict) and "data" in plans:
+        plans = plans["data"]
     assert len(plans) > 0
     plan_id = plans[0]["id"]
 
