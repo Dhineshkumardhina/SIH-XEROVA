@@ -53,13 +53,6 @@ def test_tasks_api():
     assert "task_code" in tasks[0]
 
 def test_blocks_api_and_approve():
-    res = client.get("/api/v1/blocks")
-    assert res.status_code == 200
-    plans = res.json()
-    assert isinstance(plans, list)
-    assert len(plans) >= 1
-    plan_id = plans[0]["id"]
-
     # Login as control officer to obtain authorization
     login_res = client.post("/api/v1/auth/login", json={
         "username": "control",
@@ -67,6 +60,13 @@ def test_blocks_api_and_approve():
     })
     token = login_res.json()["data"]["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
+
+    res = client.get("/api/v1/blocks", headers=headers)
+    assert res.status_code == 200
+    plans = res.json()
+    assert isinstance(plans, list)
+    assert len(plans) >= 1
+    plan_id = plans[0]["id"]
 
     # Test PATCH approve with authorized token
     res_appr = client.patch(f"/api/v1/blocks/{plan_id}/approve", headers=headers)

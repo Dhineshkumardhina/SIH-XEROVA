@@ -1309,7 +1309,7 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
             <div className="p-4 flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Month / Year</label>
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Month / Year</label>
                   <div className="flex gap-2">
                     <select
                       value={new Date(selectedDate).getMonth() + 1}
@@ -1319,7 +1319,7 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
                         d.setMonth(m - 1)
                         setSelectedDate(d.toISOString().split('T')[0])
                       }}
-                      className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200"
+                      className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
                     >
                       {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((mName, mIdx) => (
                         <option key={mIdx} value={mIdx + 1}>
@@ -1335,7 +1335,7 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
                         d.setFullYear(y)
                         setSelectedDate(d.toISOString().split('T')[0])
                       }}
-                      className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200"
+                      className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
                     >
                       <option value={2026}>2026</option>
                       <option value={2027}>2027</option>
@@ -1361,37 +1361,37 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <Card>
                   <div className="p-3">
-                    <p className="text-[10px] text-slate-400 uppercase">Monthly Workload</p>
-                    <p className="text-xl font-bold text-slate-100">{monthlyPlan.summary.total_tasks_scheduled} tasks</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase">Monthly Workload</p>
+                    <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{monthlyPlan.summary.total_tasks_scheduled} tasks</p>
                     <p className="text-[10px] text-slate-500">Across all corridors</p>
                   </div>
                 </Card>
                 <Card>
                   <div className="p-3">
-                    <p className="text-[10px] text-slate-400 uppercase">Possessions Planned</p>
-                    <p className="text-xl font-bold text-purple-400">{monthlyPlan.summary.total_blocks_planned}</p>
-                    <p className="text-[10px] text-purple-300/80">{monthlyPlan.summary.shared_blocks_planned} multi-dept shared</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase">Possessions Planned</p>
+                    <p className="text-xl font-bold text-purple-600 dark:text-purple-400">{monthlyPlan.summary.total_blocks_planned}</p>
+                    <p className="text-[10px] text-purple-700 dark:text-purple-300/80">{monthlyPlan.summary.shared_blocks_planned} multi-dept shared</p>
                   </div>
                 </Card>
                 <Card>
                   <div className="p-3">
-                    <p className="text-[10px] text-slate-400 uppercase">Overdue Reduction</p>
-                    <p className="text-xl font-bold text-emerald-400">{monthlyPlan.summary.expected_overdue_reduction_pct}%</p>
-                    <p className="text-[10px] text-emerald-300/80">Statutory compliance</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase">Overdue Reduction</p>
+                    <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{monthlyPlan.summary.expected_overdue_reduction_pct}%</p>
+                    <p className="text-[10px] text-emerald-700 dark:text-emerald-300/80">Statutory compliance</p>
                   </div>
                 </Card>
                 <Card>
                   <div className="p-3">
-                    <p className="text-[10px] text-slate-400 uppercase">Track Availability</p>
-                    <p className="text-xl font-bold text-blue-400">{monthlyPlan.summary.expected_asset_availability_pct}%</p>
-                    <p className="text-[10px] text-blue-300/80">High network uptime</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase">Track Availability</p>
+                    <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{monthlyPlan.summary.expected_asset_availability_pct}%</p>
+                    <p className="text-[10px] text-blue-700 dark:text-blue-300/80">High network uptime</p>
                   </div>
                 </Card>
                 <Card>
                   <div className="p-3">
-                    <p className="text-[10px] text-slate-400 uppercase">Optimization Score</p>
-                    <p className="text-xl font-bold text-emerald-300">{monthlyPlan.summary.optimization_score}/100</p>
-                    <p className="text-[10px] text-emerald-400/80">Long-term balanced</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase">Optimization Score</p>
+                    <p className="text-xl font-bold text-emerald-600 dark:text-emerald-300">{monthlyPlan.summary.optimization_score}/100</p>
+                    <p className="text-[10px] text-emerald-700 dark:text-emerald-400/80">Long-term balanced</p>
                   </div>
                 </Card>
               </div>
@@ -1401,24 +1401,24 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
                 {monthlyPlan.weeks.map((wk) => (
                   <Card key={wk.week_number}>
                     <div className="p-5 space-y-3">
-                      <div className="border-b border-slate-800 pb-2 flex items-center justify-between">
-                        <h4 className="text-sm font-bold text-slate-100">Week {wk.week_number}</h4>
+                      <div className="border-b border-slate-200 dark:border-slate-800 pb-2 flex items-center justify-between">
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">Week {wk.week_number}</h4>
                         <span className="text-[10px] font-mono text-slate-500">{wk.start_date} – {wk.end_date}</span>
                       </div>
                       <div className="space-y-2 text-xs">
-                        <div className="flex justify-between text-slate-300">
+                        <div className="flex justify-between text-slate-700 dark:text-slate-300">
                           <span>Tasks Quota:</span>
                           <span className="font-bold font-mono">{wk.tasks_quota}</span>
                         </div>
-                        <div className="flex justify-between text-amber-400">
+                        <div className="flex justify-between text-amber-600 dark:text-amber-400">
                           <span>Critical Assets Addressed:</span>
                           <span className="font-bold font-mono">{wk.critical_tasks_scheduled}</span>
                         </div>
-                        <div className="flex justify-between text-purple-300">
+                        <div className="flex justify-between text-purple-600 dark:text-purple-300">
                           <span>Possessions Planned:</span>
                           <span className="font-bold font-mono">{wk.blocks_planned}</span>
                         </div>
-                        <div className="flex justify-between text-emerald-400">
+                        <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
                           <span>Block Utilization:</span>
                           <span className="font-bold font-mono">{wk.utilization_pct.toFixed(1)}%</span>
                         </div>
@@ -1431,20 +1431,20 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
               {/* Department Workload Breakdown */}
               <Card>
                 <div className="p-5 space-y-3">
-                  <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4 text-blue-400" />
+                  <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     Department Monthly Workload Quota Allocation
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                     {monthlyPlan.department_workload.map((dept, dIdx) => (
-                      <div key={dIdx} className="p-3.5 rounded-xl border border-slate-800 bg-slate-900/60 space-y-1.5">
-                        <span className="text-slate-300 font-bold">{dept.department}</span>
-                        <div className="flex justify-between text-slate-400">
+                      <div key={dIdx} className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 space-y-1.5">
+                        <span className="text-slate-900 dark:text-slate-300 font-bold">{dept.department}</span>
+                        <div className="flex justify-between text-slate-600 dark:text-slate-400">
                           <span>Tasks Allocated:</span>
-                          <span className="font-mono text-slate-100 font-bold">{dept.tasks_count} tasks</span>
+                          <span className="font-mono text-slate-900 dark:text-slate-100 font-bold">{dept.tasks_count} tasks</span>
                         </div>
-                        <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                          <div className="bg-blue-500 h-full rounded-full" style={{ width: `${dept.quota_pct}%` }} />
+                        <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                          <div className="bg-blue-600 dark:bg-blue-500 h-full rounded-full" style={{ width: `${dept.quota_pct}%` }} />
                         </div>
                       </div>
                     ))}
@@ -1461,10 +1461,10 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
         <div className="space-y-6">
           <Card>
             <div className="p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
                 <div className="flex items-center gap-2">
-                  <SlidersHorizontal className="w-4 h-4 text-purple-400" />
-                  <h2 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+                  <SlidersHorizontal className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  <h2 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
                     Google OR-Tools CP-SAT Master Optimizer Controls
                   </h2>
                 </div>
@@ -1472,11 +1472,11 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Corridor</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Corridor</label>
                   <select
                     value={selectedCorridorId}
                     onChange={(e) => setSelectedCorridorId(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
                   >
                     {corridors.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -1486,20 +1486,20 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Date</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Date</label>
                   <input
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Horizon</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Horizon</label>
                   <select
                     value={horizon}
                     onChange={(e) => setHorizon(e.target.value as any)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="DAILY">Daily (24h)</option>
                     <option value="WEEKLY">Weekly (7-Day)</option>
@@ -1507,11 +1507,11 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Max Duration</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Max Duration</label>
                   <select
                     value={maxBlockDuration}
                     onChange={(e) => setMaxBlockDuration(Number(e.target.value))}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
                   >
                     <option value={120}>120 min</option>
                     <option value={180}>180 min</option>
@@ -1521,18 +1521,18 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
               </div>
 
               {/* Weights */}
-              <div className="p-4 rounded-xl border border-slate-800 bg-slate-900/60 space-y-3">
+              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">Objective Weights (Total: {totalWeight}%)</span>
-                  <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded border ${isWeightValid ? 'text-emerald-400 border-emerald-500/30' : 'text-red-400 border-red-500/30'}`}>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Objective Weights (Total: {totalWeight}%)</span>
+                  <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded border ${isWeightValid ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-500/30' : 'text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-500/30'}`}>
                     {isWeightValid ? 'Validated 100% ✓' : 'Must equal 100%'}
                   </span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
                   <div>
-                    <div className="flex justify-between text-slate-400 mb-1">
-                      <span>Asset Availability</span>
-                      <span className="font-mono text-slate-200">{weights.asset_availability}%</span>
+                    <div className="flex justify-between text-slate-600 dark:text-slate-400 mb-1">
+                      <span className="font-medium">Asset Availability</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{weights.asset_availability}%</span>
                     </div>
                     <input
                       type="range"
@@ -1541,13 +1541,13 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
                       step={5}
                       value={weights.asset_availability}
                       onChange={(e) => setWeights({ ...weights, asset_availability: Number(e.target.value) })}
-                      className="w-full h-1.5 bg-slate-800 rounded accent-blue-500"
+                      className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded accent-blue-600"
                     />
                   </div>
                   <div>
-                    <div className="flex justify-between text-slate-400 mb-1">
-                      <span>Maintenance Priority</span>
-                      <span className="font-mono text-slate-200">{weights.maintenance_priority}%</span>
+                    <div className="flex justify-between text-slate-600 dark:text-slate-400 mb-1">
+                      <span className="font-medium">Maintenance Priority</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{weights.maintenance_priority}%</span>
                     </div>
                     <input
                       type="range"
@@ -1556,13 +1556,13 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
                       step={5}
                       value={weights.maintenance_priority}
                       onChange={(e) => setWeights({ ...weights, maintenance_priority: Number(e.target.value) })}
-                      className="w-full h-1.5 bg-slate-800 rounded accent-purple-500"
+                      className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded accent-purple-600"
                     />
                   </div>
                   <div>
-                    <div className="flex justify-between text-slate-400 mb-1">
-                      <span>Train Impact</span>
-                      <span className="font-mono text-slate-200">{weights.train_impact}%</span>
+                    <div className="flex justify-between text-slate-600 dark:text-slate-400 mb-1">
+                      <span className="font-medium">Train Impact</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{weights.train_impact}%</span>
                     </div>
                     <input
                       type="range"
@@ -1571,13 +1571,13 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
                       step={5}
                       value={weights.train_impact}
                       onChange={(e) => setWeights({ ...weights, train_impact: Number(e.target.value) })}
-                      className="w-full h-1.5 bg-slate-800 rounded accent-amber-500"
+                      className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded accent-amber-600"
                     />
                   </div>
                   <div>
-                    <div className="flex justify-between text-slate-400 mb-1">
-                      <span>Block Utilization</span>
-                      <span className="font-mono text-slate-200">{weights.block_utilization}%</span>
+                    <div className="flex justify-between text-slate-600 dark:text-slate-400 mb-1">
+                      <span className="font-medium">Block Utilization</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{weights.block_utilization}%</span>
                     </div>
                     <input
                       type="range"
@@ -1586,7 +1586,7 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
                       step={5}
                       value={weights.block_utilization}
                       onChange={(e) => setWeights({ ...weights, block_utilization: Number(e.target.value) })}
-                      className="w-full h-1.5 bg-slate-800 rounded accent-emerald-500"
+                      className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded accent-emerald-600"
                     />
                   </div>
                 </div>
@@ -1609,11 +1609,11 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
           {planResult && (
             <Card>
               <div className="p-5 space-y-3">
-                <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   CP-SAT Solution: {planResult.summary.blocks_generated} Possessions Generated (Score: {planResult.summary.optimization_score}/100)
                 </h3>
-                <p className="text-xs text-slate-300">{planResult.recommended_blocks[0]?.reason}</p>
+                <p className="text-xs text-slate-700 dark:text-slate-300">{planResult.recommended_blocks[0]?.reason}</p>
               </div>
             </Card>
           )}

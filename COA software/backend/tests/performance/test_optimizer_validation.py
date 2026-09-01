@@ -34,22 +34,30 @@ def load_scenario(file_name: str) -> dict:
     with open(os.path.join(SCENARIO_DIR, file_name), "r", encoding="utf-8") as f:
         return json.load(f)
 
-@pytest.fixture(scope="function")
-def populate_scenario(db_session: Session, scenario: dict):
-    """Create DB objects for a given scenario and yield the corridor id.
-    The fixture cleans up by rolling back the transaction after the test.
-    """
+from app.models.station import Station
+
+def populate_scenario(db_session: Session, scenario: dict) -> str:
+    """Create DB objects for a given scenario and return the corridor id."""
+    # Ensure default stations exist
+    st1 = Station(id="st-test-01", code="STN-TEST-1", name="Test Station 1")
+    st2 = Station(id="st-test-02", code="STN-TEST-2", name="Test Station 2")
+    db_session.merge(st1)
+    db_session.merge(st2)
+    db_session.flush()
+
     # Create corridor(s)
     corridors = {}
     for c in scenario.get("corridors", []):
         corridor = Corridor(
-            id=c.get("id"),
+            id=str(c.get("id")),
             code=f"COR-{c.get('id')}",
             name=f"Corridor {c.get('id')}",
-            capacity=c.get("capacity", 1),
+            start_station_id=st1.id,
+            end_station_id=st2.id,
+            track_count=c.get("capacity", 2),
         )
         db_session.add(corridor)
-        corridors[c["id"]] = corridor
+        corridors[str(c["id"])] = corridor
     db_session.flush()
 
     # Create assets linked to corridors if provided
@@ -101,8 +109,7 @@ def populate_scenario(db_session: Session, scenario: dict):
 
     # Return first corridor id for the optimizer
     first_corridor_id = next(iter(corridors))
-    yield first_corridor_id
-    # Cleanup via rollback handled by the calling fixture
+    return first_corridor_id
 
 # List of scenario file names (ordered as per implementation plan)
 SCENARIO_FILES = [
@@ -122,8 +129,7 @@ SCENARIO_FILES = [
 def test_optimizer_validation(db_session: Session, scenario_file: str):
     scenario = load_scenario(scenario_file)
     # Populate DB and obtain corridor id
-    for corridor_id in populate_scenario(db_session, scenario):
-        pass  # fixture yields once
+    corridor_id = populate_scenario(db_session, scenario)
     # Planning date – use window start if provided, else today
     planning_date_str = scenario.get("parameters", {}).get("window_start")
     planning_date = datetime.fromisoformat(planning_date_str) if planning_date_str else datetime.utcnow()

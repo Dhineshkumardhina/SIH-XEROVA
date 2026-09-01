@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import L from 'leaflet'
 import {
   Train as TrainIcon,
   ZoomIn,
@@ -47,7 +48,8 @@ interface GeoCorridor {
   electrified: boolean
   density: 'LOW' | 'NORMAL' | 'HIGH' | 'CONGESTED'
   availabilityPct: number
-  center: { lat: number; lng: number }
+  center: [number, number]
+  zoom: number
   stations: GeoStation[]
   schematicPathD: string
 }
@@ -80,7 +82,7 @@ interface ActiveBlockOverlay {
   reason: string
 }
 
-// Rich Indian Railways Corridors with Real GPS Coordinates
+// Indian Railways Real GPS GIS Corridors Data
 const CORRIDORS_GIS_DATA: GeoCorridor[] = [
   {
     id: 'cor-001',
@@ -91,7 +93,8 @@ const CORRIDORS_GIS_DATA: GeoCorridor[] = [
     electrified: true,
     density: 'HIGH',
     availabilityPct: 94.8,
-    center: { lat: 26.8, lng: 80.5 },
+    center: [26.85, 80.1],
+    zoom: 7,
     schematicPathD: 'M 80 180 C 220 160, 360 210, 500 220 C 640 230, 780 270, 920 290',
     stations: [
       { id: 'st-01', code: 'NDLS', name: 'New Delhi', km: 0, lat: 28.6139, lng: 77.2090, platforms: 16, hasJunction: true, signalAspect: 'GREEN', schematicX: 80, schematicY: 180 },
@@ -112,7 +115,8 @@ const CORRIDORS_GIS_DATA: GeoCorridor[] = [
     electrified: true,
     density: 'CONGESTED',
     availabilityPct: 91.2,
-    center: { lat: 26.5, lng: 75.0 },
+    center: [26.4, 75.3],
+    zoom: 7,
     schematicPathD: 'M 100 380 C 260 340, 420 380, 580 400 C 720 420, 830 450, 910 490',
     stations: [
       { id: 'st-08', code: 'DER', name: 'Dadri DFC Yard', km: 0, lat: 28.5529, lng: 77.5544, platforms: 4, hasJunction: true, signalAspect: 'GREEN', schematicX: 100, schematicY: 380 },
@@ -131,7 +135,8 @@ const CORRIDORS_GIS_DATA: GeoCorridor[] = [
     electrified: true,
     density: 'NORMAL',
     availabilityPct: 97.4,
-    center: { lat: 18.6, lng: 79.0 },
+    center: [18.6, 79.0],
+    zoom: 7,
     schematicPathD: 'M 120 490 C 300 470, 480 490, 640 480 C 760 470, 840 450, 900 430',
     stations: [
       { id: 'st-13', code: 'BPQ', name: 'Balharshah Jn', km: 0, lat: 19.8542, lng: 79.3789, platforms: 5, hasJunction: true, signalAspect: 'GREEN', schematicX: 120, schematicY: 490 },
@@ -181,19 +186,19 @@ const ACTIVE_BLOCKS: ActiveBlockOverlay[] = [
 ]
 
 export const RailwayCorridorMap: React.FC<RailwayCorridorMapProps> = ({
-  height = '500px',
+  height = '520px',
   selectedCorridorId = 'cor-001',
   onSelectCorridor,
   showControls = true,
   className,
 }) => {
   const [activeCorridorId, setActiveCorridorId] = useState<string>(selectedCorridorId)
-  const [mapMode, setMapMode] = useState<'SCHEMATIC' | 'GEOGRAPHIC'>('SCHEMATIC')
-  const [gisStyle, setGisStyle] = useState<'STANDARD' | 'SATELLITE' | 'DARK'>('STANDARD')
-  
-  // Interactive Viewport State (Zoom & Pan)
-  const [zoom, setZoom] = useState<number>(1)
-  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const [mapMode, setMapMode] = useState<'SCHEMATIC' | 'GEOGRAPHIC'>('GEOGRAPHIC')
+  const [gisTileStyle, setGisTileStyle] = useState<'VOYAGER' | 'SATELLITE' | 'DARK' | 'OSM'>('VOYAGER')
+
+  // Schematic Pan/Zoom state
+  const [schematicZoom, setSchematicZoom] = useState<number>(1)
+  const [schematicPan, setSchematicPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
 
@@ -201,7 +206,6 @@ export const RailwayCorridorMap: React.FC<RailwayCorridorMapProps> = ({
   const [showTrains, setShowTrains] = useState(true)
   const [showBlocks, setShowBlocks] = useState(true)
   const [showSignals, setShowSignals] = useState(true)
-  const [showSpeedRestrictions, setShowSpeedRestrictions] = useState(true)
 
   // Inspection Selection
   const [selectedStation, setSelectedStation] = useState<GeoStation | null>(null)
@@ -209,14 +213,18 @@ export const RailwayCorridorMap: React.FC<RailwayCorridorMapProps> = ({
   const [selectedBlock, setSelectedBlock] = useState<ActiveBlockOverlay | null>(null)
 
   const [trains, setTrains] = useState<LiveTrainMarker[]>(INITIAL_TRAINS)
-  const containerRef = useRef<HTMLDivElement | null>(null)
 
-  // Animation Loop for Moving Trains
+  const mapContainerRef = useRef<HTMLDivElement | null>(null)
+  const leafletMapInstanceRef = useRef<L.Map | null>(null)
+  const tileLayerRef = useRef<L.TileLayer | null>(null)
+  const markersLayerGroupRef = useRef<L.LayerGroup | null>(null)
+
+  // Animation Loop for Live Moving Trains
   useEffect(() => {
     const timer = setInterval(() => {
       setTrains((prev) =>
         prev.map((t) => {
-          const step = (t.speedKmph / 120) * 0.35
+          const step = (t.speedKmph / 120) * 0.4
           let newProgress = t.direction === 'DOWN' ? t.progress + step : t.progress - step
           let newDirection = t.direction
           if (newProgress >= 98) {
@@ -237,103 +245,286 @@ export const RailwayCorridorMap: React.FC<RailwayCorridorMapProps> = ({
     return () => clearInterval(timer)
   }, [])
 
-  const handleZoomIn = () => setZoom((z) => Math.min(3.5, z + 0.25))
-  const handleZoomOut = () => setZoom((z) => Math.max(0.6, z - 0.25))
-  const handleResetView = () => {
-    setZoom(1)
-    setPan({ x: 0, y: 0 })
-  }
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true)
-    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y })
-  }
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return
-    setPan({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y,
-    })
-  }
-
-  const handleMouseUp = () => setIsDragging(false)
+  const activeCorridor = CORRIDORS_GIS_DATA.find((c) => c.id === activeCorridorId) || CORRIDORS_GIS_DATA[0]
 
   const handleSelectCorridor = (id: string) => {
     setActiveCorridorId(id)
     setSelectedStation(null)
     setSelectedTrain(null)
     setSelectedBlock(null)
-    setPan({ x: 0, y: 0 })
-    setZoom(1)
     if (onSelectCorridor) onSelectCorridor(id)
+
+    const targetCorridor = CORRIDORS_GIS_DATA.find((c) => c.id === id)
+    if (targetCorridor && leafletMapInstanceRef.current) {
+      leafletMapInstanceRef.current.flyTo(targetCorridor.center, targetCorridor.zoom, { duration: 1.2 })
+    }
   }
 
-  const activeCorridor = CORRIDORS_GIS_DATA.find((c) => c.id === activeCorridorId) || CORRIDORS_GIS_DATA[0]
-
-  // Geographic Projection: Maps Lat/Lng to Screen Canvas Coordinates (1000 x 600)
-  const projectGeoToScreen = useCallback((lat: number, lng: number): { x: number; y: number } => {
-    // Extents tailored for Indian Railway Northern/Western/Southern trunk corridors
-    const minLat = 15.0
-    const maxLat = 30.5
-    const minLng = 71.0
-    const maxLng = 85.5
-
-    const canvasWidth = 1000
-    const canvasHeight = 600
-
-    // Mercator-like linear stretch with margin
-    const x = 70 + ((lng - minLng) / (maxLng - minLng)) * (canvasWidth - 140)
-    const y = (canvasHeight - 60) - ((lat - minLat) / (maxLat - minLat)) * (canvasHeight - 120)
-
-    return { x, y }
-  }, [])
-
-  // Calculate coordinates for a train given its progress along a corridor
-  const getInterpolatedCoordinates = (corridor: GeoCorridor, progress: number, mode: 'SCHEMATIC' | 'GEOGRAPHIC') => {
-    const stCount = corridor.stations.length
-    if (stCount < 2) return { x: 200, y: 200 }
-
-    const segment = (progress / 100) * (stCount - 1)
-    const idx = Math.min(Math.floor(segment), stCount - 2)
+  // Calculate coordinates for a train given progress along corridor GPS track
+  const getTrainGeoCoordinates = (corridor: GeoCorridor, progress: number): [number, number] => {
+    const stations = corridor.stations
+    if (stations.length < 2) return [stations[0].lat, stations[0].lng]
+    const segment = (progress / 100) * (stations.length - 1)
+    const idx = Math.min(Math.floor(segment), stations.length - 2)
     const t = segment - idx
+    const s1 = stations[idx]
+    const s2 = stations[idx + 1]
+    return [
+      s1.lat + (s2.lat - s1.lat) * t,
+      s1.lng + (s2.lng - s1.lng) * t
+    ]
+  }
 
-    const s1 = corridor.stations[idx]
-    const s2 = corridor.stations[idx + 1]
-
-    if (mode === 'SCHEMATIC') {
-      return {
-        x: s1.schematicX + (s2.schematicX - s1.schematicX) * t,
-        y: s1.schematicY + (s2.schematicY - s1.schematicY) * t,
-      }
-    } else {
-      const p1 = projectGeoToScreen(s1.lat, s1.lng)
-      const p2 = projectGeoToScreen(s2.lat, s2.lng)
-      return {
-        x: p1.x + (p2.x - p1.x) * t,
-        y: p1.y + (p2.y - p1.y) * t,
-      }
+  const getTrainSchematicCoordinates = (corridor: GeoCorridor, progress: number) => {
+    const stations = corridor.stations
+    if (stations.length < 2) return { x: 100, y: 200 }
+    const segment = (progress / 100) * (stations.length - 1)
+    const idx = Math.min(Math.floor(segment), stations.length - 2)
+    const t = segment - idx
+    const s1 = stations[idx]
+    const s2 = stations[idx + 1]
+    return {
+      x: s1.schematicX + (s2.schematicX - s1.schematicX) * t,
+      y: s1.schematicY + (s2.schematicY - s1.schematicY) * t
     }
   }
 
-  // Generate smooth SVG path for GIS Geo mode
-  const getGeoPathString = (corridor: GeoCorridor): string => {
-    if (corridor.stations.length < 2) return ''
-    const points = corridor.stations.map((st) => projectGeoToScreen(st.lat, st.lng))
-    let path = `M ${points[0].x} ${points[0].y}`
-    for (let i = 1; i < points.length; i++) {
-      const prev = points[i - 1]
-      const curr = points[i]
-      const midX = (prev.x + curr.x) / 2
-      const midY = (prev.y + curr.y) / 2
-      path += ` Q ${prev.x} ${prev.y}, ${midX} ${midY} T ${curr.x} ${curr.y}`
+  // Initialize Leaflet GIS Map
+  useEffect(() => {
+    if (mapMode !== 'GEOGRAPHIC' || !mapContainerRef.current) return
+
+    if (!leafletMapInstanceRef.current) {
+      const map = L.map(mapContainerRef.current, {
+        center: activeCorridor.center,
+        zoom: activeCorridor.zoom,
+        zoomControl: false,
+        attributionControl: false
+      })
+
+      // Add Base Tile Layer
+      const getTileUrl = (style: string) => {
+        switch (style) {
+          case 'SATELLITE':
+            return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+          case 'DARK':
+            return 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+          case 'OSM':
+            return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+          default:
+            return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+        }
+      }
+
+      const tileLayer = L.tileLayer(getTileUrl(gisTileStyle), {
+        maxZoom: 18,
+        subdomains: 'abcd'
+      }).addTo(map)
+
+      tileLayerRef.current = tileLayer
+      markersLayerGroupRef.current = L.layerGroup().addTo(map)
+      leafletMapInstanceRef.current = map
+
+      // Invalidate size on load
+      setTimeout(() => {
+        map.invalidateSize()
+      }, 200)
     }
-    return path
+
+    return () => {
+      // Clean up map instance when component unmounts or mode changes
+      if (leafletMapInstanceRef.current && mapMode !== 'GEOGRAPHIC') {
+        leafletMapInstanceRef.current.remove()
+        leafletMapInstanceRef.current = null
+      }
+    }
+  }, [mapMode])
+
+  // Update Base Tile Layer Style
+  useEffect(() => {
+    if (!leafletMapInstanceRef.current || !tileLayerRef.current) return
+    const getTileUrl = (style: string) => {
+      switch (style) {
+        case 'SATELLITE':
+          return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        case 'DARK':
+          return 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        case 'OSM':
+          return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+        default:
+          return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+      }
+    }
+    tileLayerRef.current.setUrl(getTileUrl(gisTileStyle))
+  }, [gisTileStyle])
+
+  // Render Leaflet Overlays (Corridor Lines, Stations, Trains, Blocks)
+  useEffect(() => {
+    if (mapMode !== 'GEOGRAPHIC' || !leafletMapInstanceRef.current || !markersLayerGroupRef.current) return
+
+    const layerGroup = markersLayerGroupRef.current
+    layerGroup.clearLayers()
+
+    // 1. Draw All Corridors Track Polylines
+    CORRIDORS_GIS_DATA.forEach((corridor) => {
+      const isSelected = corridor.id === activeCorridorId
+      const latLngs = corridor.stations.map((st) => [st.lat, st.lng] as [number, number])
+
+      // Outer track glow
+      L.polyline(latLngs, {
+        color: isSelected ? '#3b82f6' : '#94a3b8',
+        weight: isSelected ? 8 : 4,
+        opacity: isSelected ? 0.35 : 0.2
+      }).addTo(layerGroup)
+
+      // Main Railway Line
+      L.polyline(latLngs, {
+        color: isSelected ? '#1d4ed8' : '#64748b',
+        weight: isSelected ? 4 : 2.5,
+        opacity: 0.9
+      }).addTo(layerGroup)
+
+      // Railway Cross-Tie Dash
+      L.polyline(latLngs, {
+        color: '#ffffff',
+        weight: isSelected ? 2 : 1.5,
+        dashArray: '2, 8',
+        opacity: 0.95
+      }).addTo(layerGroup)
+    })
+
+    // 2. Draw Active Maintenance Block Zones
+    if (showBlocks) {
+      ACTIVE_BLOCKS.forEach((blk) => {
+        const corr = CORRIDORS_GIS_DATA.find((c) => c.id === blk.corridorId)
+        if (!corr) return
+        const fromSt = corr.stations.find((s) => s.code === blk.fromStationCode) || corr.stations[1]
+        const toSt = corr.stations.find((s) => s.code === blk.toStationCode) || corr.stations[2]
+
+        L.polyline([[fromSt.lat, fromSt.lng], [toSt.lat, toSt.lng]], {
+          color: '#ef4444',
+          weight: 12,
+          opacity: 0.5,
+          dashArray: '6, 6'
+        })
+          .addTo(layerGroup)
+          .on('click', () => {
+            setSelectedBlock(blk)
+            setSelectedStation(null)
+            setSelectedTrain(null)
+          })
+
+        // Warning Icon Marker in middle of block
+        const midLat = (fromSt.lat + toSt.lat) / 2
+        const midLng = (fromSt.lng + toSt.lng) / 2
+        const blockIcon = L.divIcon({
+          className: 'custom-block-icon',
+          html: `<div style="background-color: #dc2626; color: white; border: 2px solid white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 11px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); animation: pulse 1.5s infinite;">!</div>`,
+          iconSize: [22, 22],
+          iconAnchor: [11, 11]
+        })
+
+        L.marker([midLat, midLng], { icon: blockIcon })
+          .addTo(layerGroup)
+          .on('click', () => {
+            setSelectedBlock(blk)
+            setSelectedStation(null)
+            setSelectedTrain(null)
+          })
+      })
+    }
+
+    // 3. Draw Station Markers
+    activeCorridor.stations.forEach((st) => {
+      const signalColor =
+        st.signalAspect === 'GREEN'
+          ? '#22c55e'
+          : st.signalAspect === 'YELLOW' || st.signalAspect === 'DOUBLE_YELLOW'
+          ? '#eab308'
+          : '#ef4444'
+
+      const stationIcon = L.divIcon({
+        className: 'custom-station-icon',
+        html: `
+          <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer;">
+            <div style="background: white; border: 2.5px solid #1e293b; border-radius: 50%; width: ${st.hasJunction ? '14px' : '11px'}; height: ${st.hasJunction ? '14px' : '11px'}; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.25);">
+              <div style="background: #2563eb; border-radius: 50%; width: 5px; height: 5px;"></div>
+            </div>
+            ${
+              showSignals
+                ? `<div style="position: absolute; top: -6px; right: -6px; width: 8px; height: 8px; border-radius: 50%; background: ${signalColor}; border: 1.5px solid #0f172a; box-shadow: 0 0 6px ${signalColor};"></div>`
+                : ''
+            }
+            <div style="background: rgba(15, 23, 42, 0.85); color: white; padding: 1px 4px; border-radius: 3px; font-size: 9px; font-weight: 800; font-family: monospace; margin-top: 2px; white-space: nowrap; border: 0.5px solid rgba(255,255,255,0.3); box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+              ${st.code}
+            </div>
+          </div>
+        `,
+        iconSize: [36, 36],
+        iconAnchor: [18, 7]
+      })
+
+      L.marker([st.lat, st.lng], { icon: stationIcon })
+        .addTo(layerGroup)
+        .on('click', () => {
+          setSelectedStation(st)
+          setSelectedTrain(null)
+          setSelectedBlock(null)
+        })
+    })
+
+    // 4. Draw Moving Live Trains
+    if (showTrains) {
+      trains
+        .filter((t) => t.corridorId === activeCorridorId)
+        .forEach((t) => {
+          const [tLat, tLng] = getTrainGeoCoordinates(activeCorridor, t.progress)
+          const isSelected = selectedTrain?.id === t.id
+          const trainBg = isSelected ? '#f59e0b' : t.type === 'EXPRESS' ? '#1d4ed8' : '#059669'
+
+          const trainIcon = L.divIcon({
+            className: 'custom-train-icon',
+            html: `
+              <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer;">
+                <div style="background: ${trainBg}; color: white; border: 2px solid white; border-radius: 6px; padding: 2px 6px; display: flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 900; font-family: monospace; box-shadow: 0 4px 10px rgba(0,0,0,0.35);">
+                  <span>${t.direction === 'DOWN' ? '▶' : '◀'}</span>
+                  <span>${t.number}</span>
+                </div>
+                <div style="width: 2px; height: 6px; background: ${trainBg};"></div>
+              </div>
+            `,
+            iconSize: [60, 30],
+            iconAnchor: [30, 28]
+          })
+
+          L.marker([tLat, tLng], { icon: trainIcon })
+            .addTo(layerGroup)
+            .on('click', () => {
+              setSelectedTrain(t)
+              setSelectedStation(null)
+              setSelectedBlock(null)
+            })
+        })
+    }
+  }, [activeCorridorId, mapMode, showTrains, showBlocks, showSignals, trains, selectedTrain])
+
+  // Schematic Mode Pan/Zoom Handlers
+  const handleSchematicMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true)
+    setDragStart({ x: e.clientX - schematicPan.x, y: e.clientY - schematicPan.y })
   }
+
+  const handleSchematicMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return
+    setSchematicPan({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y
+    })
+  }
+
+  const handleSchematicMouseUp = () => setIsDragging(false)
 
   return (
     <div
-      ref={containerRef}
       className={cn(
         'relative bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm flex flex-col select-none',
         className
@@ -341,7 +532,7 @@ export const RailwayCorridorMap: React.FC<RailwayCorridorMapProps> = ({
       style={{ height }}
     >
       {/* Top Map Control Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-10">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-10">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="p-1 rounded-md bg-blue-600 text-white shadow-xs">
@@ -375,63 +566,72 @@ export const RailwayCorridorMap: React.FC<RailwayCorridorMapProps> = ({
         <div className="flex items-center gap-2">
           {showControls && (
             <>
-              {/* Dual Mode Switcher: Schematic vs GIS Geo */}
+              {/* Dual Mode Switcher */}
               <div className="flex items-center bg-slate-200/80 dark:bg-slate-800 p-0.5 rounded-lg text-[11px] font-bold">
                 <button
                   onClick={() => setMapMode('SCHEMATIC')}
                   className={cn(
-                    'px-2.5 py-1 rounded transition-all cursor-pointer flex items-center gap-1',
+                    'px-2.5 py-1 rounded transition-all cursor-pointer flex items-center gap-1.5',
                     mapMode === 'SCHEMATIC'
                       ? 'bg-blue-600 text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                   )}
                 >
-                  <Sliders className="w-3 h-3" />
+                  <Sliders className="w-3.5 h-3.5" />
                   Schematic
                 </button>
                 <button
                   onClick={() => setMapMode('GEOGRAPHIC')}
                   className={cn(
-                    'px-2.5 py-1 rounded transition-all cursor-pointer flex items-center gap-1',
+                    'px-2.5 py-1 rounded transition-all cursor-pointer flex items-center gap-1.5',
                     mapMode === 'GEOGRAPHIC'
                       ? 'bg-blue-600 text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                   )}
                 >
-                  <Globe className="w-3 h-3" />
+                  <Globe className="w-3.5 h-3.5" />
                   GIS Geo
                 </button>
               </div>
 
-              {/* GIS Base Layer Style (Visible in Geo Mode) */}
+              {/* GIS Base Tile Theme (Visible in Geo Mode) */}
               {mapMode === 'GEOGRAPHIC' && (
-                <div className="hidden lg:flex items-center gap-1 bg-slate-200/60 dark:bg-slate-800 p-0.5 rounded text-[10px] font-semibold">
+                <div className="hidden lg:flex items-center gap-1 bg-slate-200/70 dark:bg-slate-800 p-0.5 rounded text-[10px] font-bold">
                   <button
-                    onClick={() => setGisStyle('STANDARD')}
+                    onClick={() => setGisTileStyle('VOYAGER')}
                     className={cn(
-                      'px-2 py-0.5 rounded',
-                      gisStyle === 'STANDARD' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow-xs' : 'text-slate-500'
+                      'px-2 py-0.5 rounded cursor-pointer',
+                      gisTileStyle === 'VOYAGER' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow-xs' : 'text-slate-500'
                     )}
                   >
-                    OSM
+                    Standard
                   </button>
                   <button
-                    onClick={() => setGisStyle('SATELLITE')}
+                    onClick={() => setGisTileStyle('SATELLITE')}
                     className={cn(
-                      'px-2 py-0.5 rounded',
-                      gisStyle === 'SATELLITE' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow-xs' : 'text-slate-500'
+                      'px-2 py-0.5 rounded cursor-pointer',
+                      gisTileStyle === 'SATELLITE' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow-xs' : 'text-slate-500'
                     )}
                   >
                     Satellite
                   </button>
                   <button
-                    onClick={() => setGisStyle('DARK')}
+                    onClick={() => setGisTileStyle('DARK')}
                     className={cn(
-                      'px-2 py-0.5 rounded',
-                      gisStyle === 'DARK' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow-xs' : 'text-slate-500'
+                      'px-2 py-0.5 rounded cursor-pointer',
+                      gisTileStyle === 'DARK' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow-xs' : 'text-slate-500'
                     )}
                   >
                     Dark
+                  </button>
+                  <button
+                    onClick={() => setGisTileStyle('OSM')}
+                    className={cn(
+                      'px-2 py-0.5 rounded cursor-pointer',
+                      gisTileStyle === 'OSM' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow-xs' : 'text-slate-500'
+                    )}
+                  >
+                    OSM
                   </button>
                 </div>
               )}
@@ -446,7 +646,6 @@ export const RailwayCorridorMap: React.FC<RailwayCorridorMapProps> = ({
                       ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-300'
                       : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400'
                   )}
-                  title="Toggle Train Feeds"
                 >
                   <TrainIcon className="w-3 h-3" /> Trains
                 </button>
@@ -458,7 +657,6 @@ export const RailwayCorridorMap: React.FC<RailwayCorridorMapProps> = ({
                       ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-300'
                       : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400'
                   )}
-                  title="Toggle Maintenance Block Zones"
                 >
                   <Wrench className="w-3 h-3" /> Blocks
                 </button>
@@ -470,31 +668,49 @@ export const RailwayCorridorMap: React.FC<RailwayCorridorMapProps> = ({
                       ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-600 dark:text-emerald-300'
                       : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400'
                   )}
-                  title="Toggle Signal Aspects"
                 >
                   <Zap className="w-3 h-3" /> Signals
                 </button>
               </div>
 
-              {/* Zoom & Reset Controls */}
+              {/* Viewport Zoom & Reset */}
               <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-800 pl-2">
                 <button
-                  onClick={handleZoomIn}
-                  className="p-1.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100"
+                  onClick={() => {
+                    if (mapMode === 'GEOGRAPHIC' && leafletMapInstanceRef.current) {
+                      leafletMapInstanceRef.current.zoomIn()
+                    } else {
+                      setSchematicZoom((z) => Math.min(3, z + 0.25))
+                    }
+                  }}
+                  className="p-1.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 cursor-pointer"
                   title="Zoom In"
                 >
                   <ZoomIn className="w-3.5 h-3.5" />
                 </button>
                 <button
-                  onClick={handleZoomOut}
-                  className="p-1.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100"
+                  onClick={() => {
+                    if (mapMode === 'GEOGRAPHIC' && leafletMapInstanceRef.current) {
+                      leafletMapInstanceRef.current.zoomOut()
+                    } else {
+                      setSchematicZoom((z) => Math.max(0.6, z - 0.25))
+                    }
+                  }}
+                  className="p-1.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 cursor-pointer"
                   title="Zoom Out"
                 >
                   <ZoomOut className="w-3.5 h-3.5" />
                 </button>
                 <button
-                  onClick={handleResetView}
-                  className="p-1.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100"
+                  onClick={() => {
+                    if (mapMode === 'GEOGRAPHIC' && leafletMapInstanceRef.current) {
+                      leafletMapInstanceRef.current.setView(activeCorridor.center, activeCorridor.zoom)
+                    } else {
+                      setSchematicZoom(1)
+                      setSchematicPan({ x: 0, y: 0 })
+                    }
+                  }}
+                  className="p-1.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 cursor-pointer"
                   title="Reset View"
                 >
                   <Maximize2 className="w-3.5 h-3.5" />
@@ -520,357 +736,276 @@ export const RailwayCorridorMap: React.FC<RailwayCorridorMapProps> = ({
         <div className="flex items-center gap-3 shrink-0">
           <span>Availability: <strong className="text-emerald-600 dark:text-emerald-400">{activeCorridor.availabilityPct}%</strong></span>
           <span className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-bold">
-            {mapMode === 'GEOGRAPHIC' ? 'GIS GPS Projection' : 'Schematic Interlocking'}
+            {mapMode === 'GEOGRAPHIC' ? 'Leaflet Real GIS Tile Engine' : 'Schematic Interlocking View'}
           </span>
         </div>
       </div>
 
-      {/* Main Interactive Map Canvas */}
-      <div
-        className={cn(
-          'relative flex-1 w-full h-full overflow-hidden cursor-grab active:cursor-grabbing transition-colors duration-300',
-          mapMode === 'GEOGRAPHIC'
-            ? gisStyle === 'SATELLITE'
-              ? 'bg-[#0f172a]'
-              : gisStyle === 'DARK'
-              ? 'bg-[#090d16]'
-              : 'bg-[#f1f5f9]'
-            : 'bg-slate-50 dark:bg-slate-950'
-        )}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-      >
-        {/* Real Geographic Background Map for GIS Geo Mode */}
-        {mapMode === 'GEOGRAPHIC' && (
+      {/* Main Map Body: Dual Render (Leaflet Real Map vs Schematic SVG) */}
+      <div className="relative flex-1 w-full h-full overflow-hidden">
+        {/* 1. Leaflet Interactive Real GIS Map */}
+        <div
+          ref={mapContainerRef}
+          className={cn(
+            'w-full h-full transition-opacity duration-300',
+            mapMode === 'GEOGRAPHIC' ? 'opacity-100 z-0' : 'opacity-0 pointer-events-none absolute inset-0'
+          )}
+        />
+
+        {/* 2. Schematic Interlocking SVG Canvas */}
+        {mapMode === 'SCHEMATIC' && (
           <div
-            className="absolute inset-0 pointer-events-none opacity-40 transition-opacity"
-            style={{
-              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-              transformOrigin: '50% 50%',
-            }}
+            className="w-full h-full bg-slate-50 dark:bg-slate-950 overflow-hidden cursor-grab active:cursor-grabbing"
+            onMouseDown={handleSchematicMouseDown}
+            onMouseMove={handleSchematicMouseMove}
+            onMouseUp={handleSchematicMouseUp}
           >
-            {/* SVG Geographical Terrain, Waterways, and Railway Corridors Grid */}
-            <svg className="w-full h-full" viewBox="0 0 1000 600">
-              {/* Major Indian Rivers & Waterways (Yamuna, Ganga, Godavari) */}
-              <path
-                d="M 60 140 Q 250 200, 480 230 T 940 310"
-                fill="none"
-                stroke={gisStyle === 'SATELLITE' ? '#1e3a8a' : '#93c5fd'}
-                strokeWidth="4"
-                opacity="0.6"
-              />
-              <path
-                d="M 100 450 Q 350 490, 600 480 T 920 440"
-                fill="none"
-                stroke={gisStyle === 'SATELLITE' ? '#1e3a8a' : '#93c5fd'}
-                strokeWidth="3"
-                opacity="0.5"
-              />
+            <svg
+              className="w-full h-full"
+              viewBox="0 0 1000 600"
+              preserveAspectRatio="xMidYMid meet"
+              style={{
+                transform: `translate(${schematicPan.x}px, ${schematicPan.y}px) scale(${schematicZoom})`,
+                transformOrigin: '50% 50%',
+                transition: isDragging ? 'none' : 'transform 0.15s ease-out',
+              }}
+            >
+              <defs>
+                <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" className="text-slate-200 dark:text-slate-800/60" strokeWidth="0.5" />
+                </pattern>
+              </defs>
 
-              {/* State & Regional Boundary Contours */}
-              <path
-                d="M 40 80 L 150 60 L 300 120 L 450 90 L 600 130 L 750 110 L 920 180"
-                fill="none"
-                stroke="#64748b"
-                strokeWidth="1"
-                strokeDasharray="4 4"
-                opacity="0.3"
-              />
-              <path
-                d="M 80 320 L 220 280 L 420 340 L 650 310 L 880 360"
-                fill="none"
-                stroke="#64748b"
-                strokeWidth="1"
-                strokeDasharray="4 4"
-                opacity="0.3"
-              />
-            </svg>
-          </div>
-        )}
+              <rect width="1000" height="600" fill="url(#grid)" />
 
-        {/* Interactive SVG Layer */}
-        <svg
-          className="w-full h-full"
-          viewBox="0 0 1000 600"
-          preserveAspectRatio="xMidYMid meet"
-          style={{
-            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-            transformOrigin: '50% 50%',
-            transition: isDragging ? 'none' : 'transform 0.15s ease-out',
-          }}
-        >
-          <defs>
-            <pattern id="grid-pattern" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" className="text-slate-200/80 dark:text-slate-800/60" strokeWidth="0.5" />
-            </pattern>
-            {/* Glow Filter for Signals & Trains */}
-            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
-          </defs>
-
-          {/* Grid Background in Schematic Mode */}
-          {mapMode === 'SCHEMATIC' && <rect width="1000" height="600" fill="url(#grid-pattern)" />}
-
-          {/* 1. Track Network Rendering */}
-          {CORRIDORS_GIS_DATA.map((corridor) => {
-            const isSelected = corridor.id === activeCorridorId
-            const pathD = mapMode === 'SCHEMATIC' ? corridor.schematicPathD : getGeoPathString(corridor)
-
-            return (
-              <g key={corridor.id} className="transition-opacity duration-300" opacity={isSelected ? 1 : 0.35}>
-                {/* Track Outer Glow/Highlight */}
-                <path
-                  d={pathD}
-                  fill="none"
-                  stroke={isSelected ? '#3b82f6' : '#94a3b8'}
-                  strokeWidth={isSelected ? 8 : 4}
-                  strokeLinecap="round"
-                  opacity={0.3}
-                />
-
-                {/* Main Rail Line Track */}
-                <path
-                  d={pathD}
-                  fill="none"
-                  stroke={isSelected ? '#2563eb' : '#64748b'}
-                  strokeWidth={isSelected ? 4 : 2.5}
-                  strokeLinecap="round"
-                />
-
-                {/* Railway Sleepers / Ties Pattern */}
-                <path
-                  d={pathD}
-                  fill="none"
-                  stroke="#ffffff"
-                  strokeWidth={isSelected ? 2.5 : 1.5}
-                  strokeDasharray="2 6"
-                  opacity={0.9}
-                />
-
-                {/* Corridor Label */}
-                {corridor.stations.length > 0 && (
-                  <text
-                    x={mapMode === 'SCHEMATIC' ? corridor.stations[0].schematicX : projectGeoToScreen(corridor.stations[0].lat, corridor.stations[0].lng).x}
-                    y={mapMode === 'SCHEMATIC' ? corridor.stations[0].schematicY - 24 : projectGeoToScreen(corridor.stations[0].lat, corridor.stations[0].lng).y - 24}
-                    fill="currentColor"
-                    className="text-[11px] font-black tracking-wider fill-slate-800 dark:fill-slate-200"
-                  >
-                    {corridor.code}: {corridor.name}
-                  </text>
-                )}
-              </g>
-            )
-          })}
-
-          {/* 2. Active Maintenance Block Zones */}
-          {showBlocks &&
-            ACTIVE_BLOCKS.map((blk) => {
-              if (blk.corridorId !== activeCorridorId && activeCorridorId !== 'all') return null
-              const corr = CORRIDORS_GIS_DATA.find((c) => c.id === blk.corridorId)
-              if (!corr) return null
-
-              const fromSt = corr.stations.find((s) => s.code === blk.fromStationCode) || corr.stations[1]
-              const toSt = corr.stations.find((s) => s.code === blk.toStationCode) || corr.stations[2]
-
-              const p1 = mapMode === 'SCHEMATIC' ? { x: fromSt.schematicX, y: fromSt.schematicY } : projectGeoToScreen(fromSt.lat, fromSt.lng)
-              const p2 = mapMode === 'SCHEMATIC' ? { x: toSt.schematicX, y: toSt.schematicY } : projectGeoToScreen(toSt.lat, toSt.lng)
-
-              return (
-                <g
-                  key={blk.id}
-                  className="cursor-pointer"
-                  onClick={() => {
-                    setSelectedBlock(blk)
-                    setSelectedStation(null)
-                    setSelectedTrain(null)
-                  }}
-                >
-                  <line
-                    x1={p1.x}
-                    y1={p1.y}
-                    x2={p2.x}
-                    y2={p2.y}
-                    stroke="#ef4444"
-                    strokeWidth="14"
-                    strokeLinecap="round"
-                    opacity="0.35"
-                    className="animate-pulse"
-                  />
-                  <line
-                    x1={p1.x}
-                    y1={p1.y}
-                    x2={p2.x}
-                    y2={p2.y}
-                    stroke="#dc2626"
-                    strokeWidth="4"
-                    strokeDasharray="6 4"
-                  />
-                  <circle cx={(p1.x + p2.x) / 2} cy={(p1.y + p2.y) / 2} r="10" fill="#dc2626" />
-                  <text
-                    x={(p1.x + p2.x) / 2}
-                    y={(p1.y + p2.y) / 2 + 3.5}
-                    textAnchor="middle"
-                    fill="#ffffff"
-                    fontSize="9"
-                    fontWeight="bold"
-                  >
-                    !
-                  </text>
-                </g>
-              )
-            })}
-
-          {/* 3. Stations & Kilometer Posts */}
-          {activeCorridor.stations.map((st) => {
-            const pos = mapMode === 'SCHEMATIC' ? { x: st.schematicX, y: st.schematicY } : projectGeoToScreen(st.lat, st.lng)
-
-            return (
-              <g
-                key={st.id}
-                className="cursor-pointer group"
-                onClick={() => {
-                  setSelectedStation(st)
-                  setSelectedTrain(null)
-                  setSelectedBlock(null)
-                }}
-              >
-                {st.hasJunction && (
-                  <circle cx={pos.x} cy={pos.y} r="12" fill="#3b82f6" opacity="0.25" className="animate-ping" />
-                )}
-
-                <circle
-                  cx={pos.x}
-                  cy={pos.y}
-                  r={st.hasJunction ? 7 : 5.5}
-                  fill="#ffffff"
-                  stroke="#1e293b"
-                  strokeWidth="2.5"
-                  className="transition-transform group-hover:scale-125"
-                />
-
-                <circle cx={pos.x} cy={pos.y} r={st.hasJunction ? 3.5 : 2.5} fill="#2563eb" />
-
-                {/* Signal Aspect Light */}
-                {showSignals && (
-                  <circle
-                    cx={pos.x + 8}
-                    cy={pos.y - 8}
-                    r="3.5"
-                    fill={
-                      st.signalAspect === 'GREEN'
-                        ? '#22c55e'
-                        : st.signalAspect === 'YELLOW' || st.signalAspect === 'DOUBLE_YELLOW'
-                        ? '#eab308'
-                        : '#ef4444'
-                    }
-                    stroke="#0f172a"
-                    strokeWidth="1"
-                    filter="url(#glow)"
-                  />
-                )}
-
-                {/* Station Code Label */}
-                <text
-                  x={pos.x}
-                  y={pos.y + 18}
-                  textAnchor="middle"
-                  fill="currentColor"
-                  className="text-[10px] font-bold fill-slate-900 dark:fill-slate-100 group-hover:fill-blue-600 transition-colors"
-                >
-                  {st.code}
-                </text>
-
-                {/* Kilometer Post / Geo Coordinate Tag */}
-                <text
-                  x={pos.x}
-                  y={pos.y + 28}
-                  textAnchor="middle"
-                  fill="currentColor"
-                  className="text-[8px] font-mono fill-slate-500 dark:fill-slate-400"
-                >
-                  {mapMode === 'GEOGRAPHIC' ? `${st.lat.toFixed(2)}°N` : `Km ${st.km}`}
-                </text>
-              </g>
-            )
-          })}
-
-          {/* 4. Live Moving Trains */}
-          {showTrains &&
-            trains
-              .filter((t) => t.corridorId === activeCorridorId)
-              .map((t) => {
-                const coords = getInterpolatedCoordinates(activeCorridor, t.progress, mapMode)
-                const isSelected = selectedTrain?.id === t.id
-
+              {/* Render Corridors Track Schematic */}
+              {CORRIDORS_GIS_DATA.map((corridor) => {
+                const isSelected = corridor.id === activeCorridorId
                 return (
-                  <g
-                    key={t.id}
-                    className="cursor-pointer"
-                    transform={`translate(${coords.x}, ${coords.y})`}
-                    onClick={() => {
-                      setSelectedTrain(t)
-                      setSelectedStation(null)
-                      setSelectedBlock(null)
-                    }}
-                  >
-                    <circle
-                      r="12"
-                      fill={t.type === 'EXPRESS' ? '#2563eb' : '#10b981'}
-                      opacity="0.3"
-                      className="animate-pulse"
+                  <g key={corridor.id} opacity={isSelected ? 1 : 0.35}>
+                    <path
+                      d={corridor.schematicPathD}
+                      fill="none"
+                      stroke={isSelected ? '#3b82f6' : '#94a3b8'}
+                      strokeWidth={isSelected ? 8 : 4}
+                      strokeLinecap="round"
+                      opacity={0.3}
                     />
-
-                    <rect
-                      x="-14"
-                      y="-8"
-                      width="28"
-                      height="16"
-                      rx="4"
-                      fill={isSelected ? '#f59e0b' : t.type === 'EXPRESS' ? '#1d4ed8' : '#059669'}
+                    <path
+                      d={corridor.schematicPathD}
+                      fill="none"
+                      stroke={isSelected ? '#2563eb' : '#64748b'}
+                      strokeWidth={isSelected ? 4 : 2.5}
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d={corridor.schematicPathD}
+                      fill="none"
                       stroke="#ffffff"
-                      strokeWidth="1.5"
-                      className="shadow-md"
-                    />
-
-                    <text
-                      x="0"
-                      y="3.5"
-                      textAnchor="middle"
-                      fill="#ffffff"
-                      fontSize="9"
-                      fontWeight="bold"
-                      fontFamily="monospace"
-                    >
-                      {t.direction === 'DOWN' ? '▶' : '◀'}
-                    </text>
-
-                    <rect
-                      x="-22"
-                      y="-22"
-                      width="44"
-                      height="12"
-                      rx="2"
-                      fill="#0f172a"
-                      opacity="0.9"
+                      strokeWidth={isSelected ? 2.5 : 1.5}
+                      strokeDasharray="2 6"
+                      opacity={0.9}
                     />
                     <text
-                      x="0"
-                      y="-13"
-                      textAnchor="middle"
-                      fill="#ffffff"
-                      fontSize="8"
-                      fontWeight="bold"
-                      fontFamily="monospace"
+                      x={corridor.stations[0].schematicX}
+                      y={corridor.stations[0].schematicY - 24}
+                      fill="currentColor"
+                      className="text-[11px] font-black tracking-wider fill-slate-800 dark:fill-slate-200"
                     >
-                      {t.number}
+                      {corridor.code}: {corridor.name}
                     </text>
                   </g>
                 )
               })}
-        </svg>
+
+              {/* Schematic Active Blocks */}
+              {showBlocks &&
+                ACTIVE_BLOCKS.map((blk) => {
+                  if (blk.corridorId !== activeCorridorId && activeCorridorId !== 'all') return null
+                  const corr = CORRIDORS_GIS_DATA.find((c) => c.id === blk.corridorId)
+                  if (!corr) return null
+                  const fromSt = corr.stations.find((s) => s.code === blk.fromStationCode) || corr.stations[1]
+                  const toSt = corr.stations.find((s) => s.code === blk.toStationCode) || corr.stations[2]
+
+                  return (
+                    <g
+                      key={blk.id}
+                      className="cursor-pointer"
+                      onClick={() => {
+                        setSelectedBlock(blk)
+                        setSelectedStation(null)
+                        setSelectedTrain(null)
+                      }}
+                    >
+                      <line
+                        x1={fromSt.schematicX}
+                        y1={fromSt.schematicY}
+                        x2={toSt.schematicX}
+                        y2={toSt.schematicY}
+                        stroke="#ef4444"
+                        strokeWidth="14"
+                        strokeLinecap="round"
+                        opacity="0.4"
+                        className="animate-pulse"
+                      />
+                      <line
+                        x1={fromSt.schematicX}
+                        y1={fromSt.schematicY}
+                        x2={toSt.schematicX}
+                        y2={toSt.schematicY}
+                        stroke="#dc2626"
+                        strokeWidth="4"
+                        strokeDasharray="6 4"
+                      />
+                      <circle cx={(fromSt.schematicX + toSt.schematicX) / 2} cy={(fromSt.schematicY + toSt.schematicY) / 2} r="10" fill="#dc2626" />
+                      <text
+                        x={(fromSt.schematicX + toSt.schematicX) / 2}
+                        y={(fromSt.schematicY + toSt.schematicY) / 2 + 3.5}
+                        textAnchor="middle"
+                        fill="#ffffff"
+                        fontSize="9"
+                        fontWeight="bold"
+                      >
+                        !
+                      </text>
+                    </g>
+                  )
+                })}
+
+              {/* Schematic Stations */}
+              {activeCorridor.stations.map((st) => (
+                <g
+                  key={st.id}
+                  className="cursor-pointer group"
+                  onClick={() => {
+                    setSelectedStation(st)
+                    setSelectedTrain(null)
+                    setSelectedBlock(null)
+                  }}
+                >
+                  {st.hasJunction && (
+                    <circle cx={st.schematicX} cy={st.schematicY} r="12" fill="#3b82f6" opacity="0.25" className="animate-ping" />
+                  )}
+                  <circle
+                    cx={st.schematicX}
+                    cy={st.schematicY}
+                    r={st.hasJunction ? 7 : 5.5}
+                    fill="#ffffff"
+                    stroke="#1e293b"
+                    strokeWidth="2.5"
+                  />
+                  <circle cx={st.schematicX} cy={st.schematicY} r={st.hasJunction ? 3.5 : 2.5} fill="#2563eb" />
+
+                  {showSignals && (
+                    <circle
+                      cx={st.schematicX + 8}
+                      cy={st.schematicY - 8}
+                      r="3.5"
+                      fill={
+                        st.signalAspect === 'GREEN'
+                          ? '#22c55e'
+                          : st.signalAspect === 'YELLOW' || st.signalAspect === 'DOUBLE_YELLOW'
+                          ? '#eab308'
+                          : '#ef4444'
+                      }
+                      stroke="#0f172a"
+                      strokeWidth="1"
+                    />
+                  )}
+
+                  <text
+                    x={st.schematicX}
+                    y={st.schematicY + 18}
+                    textAnchor="middle"
+                    fill="currentColor"
+                    className="text-[10px] font-bold fill-slate-900 dark:fill-slate-100 group-hover:fill-blue-600 transition-colors"
+                  >
+                    {st.code}
+                  </text>
+                  <text
+                    x={st.schematicX}
+                    y={st.schematicY + 28}
+                    textAnchor="middle"
+                    fill="currentColor"
+                    className="text-[8px] font-mono fill-slate-500 dark:fill-slate-400"
+                  >
+                    Km {st.km}
+                  </text>
+                </g>
+              ))}
+
+              {/* Schematic Live Moving Trains */}
+              {showTrains &&
+                trains
+                  .filter((t) => t.corridorId === activeCorridorId)
+                  .map((t) => {
+                    const coords = getTrainSchematicCoordinates(activeCorridor, t.progress)
+                    const isSelected = selectedTrain?.id === t.id
+                    return (
+                      <g
+                        key={t.id}
+                        className="cursor-pointer"
+                        transform={`translate(${coords.x}, ${coords.y})`}
+                        onClick={() => {
+                          setSelectedTrain(t)
+                          setSelectedStation(null)
+                          setSelectedBlock(null)
+                        }}
+                      >
+                        <circle
+                          r="12"
+                          fill={t.type === 'EXPRESS' ? '#2563eb' : '#10b981'}
+                          opacity="0.3"
+                          className="animate-pulse"
+                        />
+                        <rect
+                          x="-14"
+                          y="-8"
+                          width="28"
+                          height="16"
+                          rx="4"
+                          fill={isSelected ? '#f59e0b' : t.type === 'EXPRESS' ? '#1d4ed8' : '#059669'}
+                          stroke="#ffffff"
+                          strokeWidth="1.5"
+                          className="shadow-md"
+                        />
+                        <text
+                          x="0"
+                          y="3.5"
+                          textAnchor="middle"
+                          fill="#ffffff"
+                          fontSize="9"
+                          fontWeight="bold"
+                          fontFamily="monospace"
+                        >
+                          {t.direction === 'DOWN' ? '▶' : '◀'}
+                        </text>
+                        <rect
+                          x="-22"
+                          y="-22"
+                          width="44"
+                          height="12"
+                          rx="2"
+                          fill="#0f172a"
+                          opacity="0.9"
+                        />
+                        <text
+                          x="0"
+                          y="-13"
+                          textAnchor="middle"
+                          fill="#ffffff"
+                          fontSize="8"
+                          fontWeight="bold"
+                          fontFamily="monospace"
+                        >
+                          {t.number}
+                        </text>
+                      </g>
+                    )
+                  })}
+            </svg>
+          </div>
+        )}
 
         {/* Slide-out Telemetry Inspector Panel */}
         {(selectedStation || selectedTrain || selectedBlock) && (
@@ -906,7 +1041,7 @@ export const RailwayCorridorMap: React.FC<RailwayCorridorMapProps> = ({
                 <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
                   <div className="bg-slate-50 dark:bg-slate-800/60 p-2 rounded">
                     <span className="text-slate-500">GPS Coordinates</span>
-                    <p className="font-mono font-bold mt-0.5">{selectedStation.lat}°N, {selectedStation.lng}°E</p>
+                    <p className="font-mono font-bold mt-0.5">{selectedStation.lat.toFixed(4)}°N, {selectedStation.lng.toFixed(4)}°E</p>
                   </div>
                   <div className="bg-slate-50 dark:bg-slate-800/60 p-2 rounded">
                     <span className="text-slate-500">Kilometer Post</span>
@@ -991,7 +1126,7 @@ export const RailwayCorridorMap: React.FC<RailwayCorridorMapProps> = ({
         )}
 
         {/* Bottom Legend Overlay */}
-        <div className="absolute bottom-3 left-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-lg flex flex-wrap items-center gap-4 text-[10px] text-slate-600 dark:text-slate-400 select-none">
+        <div className="absolute bottom-3 left-3 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-lg flex flex-wrap items-center gap-4 text-[10px] text-slate-600 dark:text-slate-400 select-none">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" />
             <span>Passenger Express</span>
