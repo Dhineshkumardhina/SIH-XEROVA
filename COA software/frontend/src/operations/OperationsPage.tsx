@@ -81,8 +81,8 @@ export default function OperationsPage() {
                   .filter(
                     (a) =>
                       !search ||
-                      a.name.toLowerCase().includes(search.toLowerCase()) ||
-                      a.id.toLowerCase().includes(search.toLowerCase())
+                      (a.name || '').toLowerCase().includes(search.toLowerCase()) ||
+                      (a.id || '').toLowerCase().includes(search.toLowerCase())
                   )
                   .map((asset) => (
                     <tr
@@ -150,8 +150,8 @@ export default function OperationsPage() {
                   .filter(
                     (t) =>
                       !search ||
-                      t.description.toLowerCase().includes(search.toLowerCase()) ||
-                      t.id.toLowerCase().includes(search.toLowerCase())
+                      (t.description || '').toLowerCase().includes(search.toLowerCase()) ||
+                      (t.id || '').toLowerCase().includes(search.toLowerCase())
                   )
                   .map((task) => (
                     <tr

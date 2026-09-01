@@ -21,8 +21,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application source
 COPY . .
 
-# Ensure entrypoint script is executable
-RUN chmod +x /app/entrypoint.sh
+# Ensure entrypoint script has Unix line endings and is executable
+RUN sed -i 's/\r$//' /app/entrypoint.sh && chmod +x /app/entrypoint.sh
 
 # Expose backend port
 EXPOSE 8000

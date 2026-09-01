@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Float, Boolean, JSON, ForeignKey, CheckConstraint
+from sqlalchemy import Column, String, Integer, Float, Boolean, JSON, ForeignKey, CheckConstraint, Index
 from sqlalchemy.orm import relationship
 from app.database.base import Base, TimestampMixin, generate_uuid
 
@@ -19,6 +19,8 @@ class Corridor(Base, TimestampMixin):
     __table_args__ = (
         CheckConstraint("distance_km >= 0", name="chk_corridor_distance_positive"),
         CheckConstraint("track_count > 0", name="chk_corridor_track_count_positive"),
+        Index("ix_corridors_start_station_id", "start_station_id"),
+        Index("ix_corridors_end_station_id", "end_station_id"),
     )
 
     start_station = relationship("Station", foreign_keys=[start_station_id])

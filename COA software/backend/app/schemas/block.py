@@ -1,6 +1,6 @@
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 class BlockRequestBase(BaseModel):
     request_code: Optional[str] = None
@@ -10,7 +10,7 @@ class BlockRequestBase(BaseModel):
     requested_date: Optional[datetime] = None
     preferred_start_at: datetime
     preferred_end_at: datetime
-    duration_minutes: int
+    duration_minutes: int = Field(..., gt=0)
     block_type: str = "MAINTENANCE"
     isolation_required: bool = False
     reason: str

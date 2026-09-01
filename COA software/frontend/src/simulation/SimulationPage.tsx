@@ -119,7 +119,7 @@ export default function SimulationPage() {
 
         <button
           onClick={reset}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800/60 text-slate-300 text-sm font-medium border border-slate-700/50 hover:bg-slate-700/60 transition-colors"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white/60 text-gray-600 text-sm font-medium border border-gray-200 hover:bg-white/70 transition-colors"
         >
           <RotateCcw className="w-4 h-4" /> Reset
         </button>
@@ -132,9 +132,7 @@ export default function SimulationPage() {
               onClick={() => setSpeed(s)}
               className={cn(
                 'px-2.5 py-1 rounded text-xs font-medium transition-all',
-                speed === s
-                  ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                  : 'bg-slate-800/50 text-slate-400 border border-slate-700/30 hover:border-slate-600'
+                speed === s ? 'bg-blue-500/20 text-blue-700 border border-blue-500/30' : 'bg-white/50 text-gray-400 border border-gray-300 hover:border-gray-400'
               )}
             >
               {s}x
@@ -144,7 +142,7 @@ export default function SimulationPage() {
       </div>
 
       {/* Progress Bar */}
-      <div className="rounded-xl bg-slate-800/50 border border-slate-700/50 p-4">
+      <div className="rounded-xl bg-white/50 border border-gray-200 p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs text-slate-400">Simulation Progress</span>
           <span className="text-xs font-mono text-slate-400">
@@ -160,7 +158,7 @@ export default function SimulationPage() {
       </div>
 
       {/* Event Feed */}
-      <div className="rounded-xl bg-slate-800/50 border border-slate-700/50 p-5 min-h-[400px]">
+      <div className="rounded-xl bg-white/50 border border-gray-200 p-5 min-h-[400px]">
         <h2 className="text-sm font-semibold text-slate-200 mb-4">Event Log</h2>
         {visibleEvents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-500">

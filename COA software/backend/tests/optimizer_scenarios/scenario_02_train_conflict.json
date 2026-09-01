@@ -1,0 +1,8 @@
+{
+  "description": "Train conflict scenario where two trains require the same corridor at overlapping times",
+  "assets": [{"id": 1, "department_id": 1, "status": "ACTIVE"}],
+  "tasks": [{"id": 1, "asset_id": 1, "priority": "HIGH", "duration_minutes": 60, "required_window_start": "2026-09-02T09:00:00Z", "required_window_end": "2026-09-02T12:00:00Z"}],
+  "trains": [{"id": 1, "schedule": [{"corridor_id": 1, "start": "2026-09-02T09:30:00Z", "end": "2026-09-02T10:30:00Z"}]}, {"id": 2, "schedule": [{"corridor_id": 1, "start": "2026-09-02T10:00:00Z", "end": "2026-09-02T11:00:00Z"}]}],
+  "corridors": [{"id": 1, "capacity": 1}],
+  "parameters": {"window_start": "2026-09-01T00:00:00Z", "window_end": "2026-09-07T23:59:59Z"}
+}

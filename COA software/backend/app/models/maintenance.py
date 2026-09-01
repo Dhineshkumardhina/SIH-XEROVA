@@ -78,6 +78,8 @@ class MaintenanceTask(Base, TimestampMixin):
     __table_args__ = (
         UniqueConstraint("external_source", "external_id", name="uq_maintenance_external_source_id"),
         Index("ix_maint_tasks_asset_dept_status", "asset_id", "department_id", "status"),
+        Index("ix_maint_tasks_scheduled_start_at", "scheduled_start_at"),
+        Index("ix_maint_tasks_due_at", "due_at"),
         CheckConstraint("duration_minutes > 0", name="chk_maint_duration_positive"),
         CheckConstraint("criticality >= 0 AND criticality <= 100", name="chk_maint_criticality_range"),
         CheckConstraint("urgency >= 0 AND urgency <= 100", name="chk_maint_urgency_range"),

@@ -19,9 +19,11 @@ from app.api.dependencies import get_db
 from app.models.user import User
 from app.services.websocket_manager import ws_manager
 from app.core.config import settings
+import uuid
 from app.core.exceptions import (
-    AppException, app_exception_handler, http_exception_handler, validation_exception_handler
+    AppException, app_exception_handler, http_exception_handler, validation_exception_handler, unhandled_exception_handler, create_error_response
 )
+from app.core.rate_limiter import rate_limiter
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -50,11 +52,27 @@ app = FastAPI(
 app.add_exception_handler(AppException, app_exception_handler)
 app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, unhandled_exception_handler)
 
-# Security Headers Middleware
+# Request ID & Rate Limiter & Security Headers Middleware
 @app.middleware("http")
-async def add_security_headers(request, call_next):
+async def app_middleware_stack(request, call_next):
+    # 1. Attach Request ID
+    req_id = f"req_{uuid.uuid4().hex[:8]}"
+    request.state.request_id = req_id
+
+    # 2. Check Rate Limiting
+    if not rate_limiter.check_rate_limit(request):
+        return create_error_response(
+            code="RATE_LIMIT_EXCEEDED",
+            message="Too many requests. Please slow down and try again.",
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            request_id=req_id
+        )
+
+    # 3. Call Next & Add Security Headers
     response = await call_next(request)
+    response.headers["X-Request-ID"] = req_id
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
@@ -95,6 +113,9 @@ api_router.include_router(optimization.router)
 api_router.include_router(planner.router)
 api_router.include_router(simulation.router)
 api_router.include_router(reports.router)
+# Demo endpoint for SIH guided demonstration
+from app.api import demo
+api_router.include_router(demo.router)
 
 app.include_router(api_router)
 
@@ -109,23 +130,38 @@ def read_root():
 
 @app.get("/health")
 def health_check(db: Session = Depends(get_db)):
-    """Health check returning database connection status."""
-    db_status = "connected"
+    """Health check returning status, database and redis connectivity."""
+    db_status = "healthy"
     try:
         db.execute(text("SELECT 1"))
     except Exception:
-        db_status = "disconnected"
+        db_status = "unhealthy"
 
-    is_healthy = (db_status == "connected")
+    redis_status = "healthy"
+    try:
+        if ws_manager.redis_client:
+            ws_manager.redis_client.ping()
+        else:
+            import redis
+            r = redis.from_url(settings.REDIS_URL, socket_connect_timeout=1)
+            r.ping()
+    except Exception:
+        redis_status = "unhealthy"
+
+    is_healthy = (db_status == "healthy")
     status_str = "healthy" if is_healthy else "unhealthy"
 
     return {
-        "success": is_healthy,
         "status": status_str,
+        "service": "railopt-backend",
         "database": db_status,
+        "redis": redis_status,
+        "success": is_healthy,
         "data": {
             "status": status_str,
+            "service": "railopt-backend",
             "database": db_status,
+            "redis": redis_status,
             "environment": settings.ENVIRONMENT,
             "version": settings.VERSION
         },

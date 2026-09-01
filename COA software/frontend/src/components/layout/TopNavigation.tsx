@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Sun, Moon, Menu } from 'lucide-react'
+import { Search, Sun, Moon, Menu, Sparkles } from 'lucide-react'
 import { DemoBanner } from '../navigation/DemoBanner'
 import { NotificationDropdown } from '../navigation/NotificationDropdown'
 import { UserProfileMenu } from '../navigation/UserProfileMenu'
 import { useUIStore } from '../../store/uiStore'
+import { useDemoStore } from '../../store/demoStore'
 
 export const TopNavigation: React.FC = () => {
   const { theme, toggleTheme, toggleMobile, setSearchOpen } = useUIStore()
+  const { isDemoActive, toggleDemoMode } = useDemoStore()
   const [currentTime, setCurrentTime] = useState<Date>(new Date())
 
   useEffect(() => {
@@ -64,9 +66,28 @@ export const TopNavigation: React.FC = () => {
         </button>
       </div>
 
-      {/* Center: Demonstration Environment Banner */}
-      <div className="hidden xl:flex items-center justify-center">
+      {/* Center: Demonstration Environment Banner & Demo Toggle */}
+      <div className="hidden xl:flex items-center justify-center gap-3">
         <DemoBanner />
+        <a
+          href="/demo"
+          className="px-2.5 py-1 rounded-full border border-purple-500/40 bg-purple-500/20 text-purple-300 hover:text-white hover:bg-purple-600 text-[10px] font-bold tracking-wider uppercase flex items-center gap-1 transition-all"
+        >
+          <Sparkles className="w-3 h-3 text-amber-300" />
+          <span>SIH DEMO HUB</span>
+        </a>
+        <button
+          onClick={toggleDemoMode}
+          title={isDemoActive ? 'Disable Demo Navigation Mode' : 'Enable SIH Demo Navigation Mode'}
+          className={`px-2.5 py-1 rounded-full border text-[10px] font-bold tracking-wider uppercase flex items-center gap-1.5 transition-all cursor-pointer ${
+            isDemoActive
+              ? 'bg-blue-500/20 border-blue-400/50 text-blue-400 shadow-sm'
+              : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <span className={`w-2 h-2 rounded-full ${isDemoActive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+          <span>{isDemoActive ? 'DEMO MODE ON' : 'ENABLE DEMO MODE'}</span>
+        </button>
       </div>
 
       {/* Right Area: Clock, Theme, Notifications, Profile */}
@@ -99,3 +120,4 @@ export const TopNavigation: React.FC = () => {
 }
 
 export default TopNavigation
+

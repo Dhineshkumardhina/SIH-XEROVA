@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   AreaChart,
@@ -11,7 +11,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts'
 import {
   Server,
@@ -24,18 +23,17 @@ import {
   Shield,
   RefreshCw,
   Activity,
-  Clock,
   ArrowRight,
-  Lightbulb,
-  BarChart3,
-  TrendingUp,
+  Sparkles,
+  SlidersHorizontal,
+  Play,
+  ChevronRight
 } from 'lucide-react'
-import { PageHeader } from '../components/ui/PageHeader'
-import { MetricCard } from '../components/ui/MetricCard'
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Skeleton } from '../components/ui/Skeleton'
 import { Button } from '../components/ui/Button'
+import { DemoControlPanel } from '../components/demo/DemoControlPanel'
 import { useAuthStore } from '../store/authStore'
 import { cn } from '../shared/utils'
 import {
@@ -50,6 +48,8 @@ import {
   getOverdueMaintenance,
 } from '../services/analytics'
 import { riskService } from '../services/risk'
+import { blockService } from '../services/blocks'
+import { defectService } from '../services/defects'
 import type {
   DashboardKPIs,
   AssetAvailabilityPoint,
@@ -61,12 +61,11 @@ import type {
   OverdueDeptData,
 } from '../types/analytics'
 
-
 // ── Constants & Helpers ─────────────────────────────────────────────
 
 const REFETCH_MS = 30_000
 
-function severityBadge(severity: string) {
+function severityBadge(severity: string): 'danger' | 'warning' | 'info' | 'neutral' | 'success' {
   const map: Record<string, 'danger' | 'warning' | 'info' | 'neutral' | 'success'> = {
     CRITICAL: 'danger',
     HIGH: 'warning',
@@ -77,7 +76,7 @@ function severityBadge(severity: string) {
   return map[severity] ?? 'neutral'
 }
 
-function corridorStatusBadge(status: string) {
+function corridorStatusBadge(status: string): 'success' | 'warning' | 'danger' | 'info' | 'neutral' {
   const map: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
     NORMAL: 'success',
     ATTENTION: 'info',
@@ -87,51 +86,66 @@ function corridorStatusBadge(status: string) {
   return map[status] ?? 'neutral'
 }
 
+function getDeptBadgeClass(dept: string): string {
+  if (dept.includes('ENG') || dept.includes('TRACK')) return 'text-blue-700 bg-blue-50 border-blue-200 dark:text-blue-300 dark:bg-blue-950/40 dark:border-blue-800'
+  if (dept.includes('SIG') || dept.includes('S&T')) return 'text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-950/40 dark:border-amber-800'
+  if (dept.includes('TRC') || dept.includes('OHE')) return 'text-purple-700 bg-purple-50 border-purple-200 dark:text-purple-300 dark:bg-purple-950/40 dark:border-purple-800'
+  return 'text-slate-700 bg-slate-100 border-slate-200 dark:text-slate-300 dark:bg-slate-800 dark:border-slate-700'
+}
 
 // ── Skeleton Loaders ────────────────────────────────────────────────
 
 function KPISkeleton() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
       {Array.from({ length: 8 }).map((_, i) => (
-        <Skeleton key={i} className="h-28 rounded-xl" />
+        <Skeleton key={i} className="h-24 rounded-lg" />
       ))}
     </div>
   )
 }
 
-function ChartSkeleton({ height = 'h-72' }: { height?: string }) {
-  return <Skeleton className={`${height} rounded-xl w-full`} />
+function ChartSkeleton({ height = 'h-64' }: { height?: string }) {
+  return <Skeleton className={`${height} rounded-lg w-full`} />
 }
-
 
 // ── Chart Custom Tooltip ────────────────────────────────────────────
 
 function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="rounded-lg bg-slate-900 dark:bg-slate-800 border border-slate-700 p-3 shadow-xl text-xs">
-      <p className="text-slate-300 font-medium mb-1.5">{label}</p>
+    <div className="rounded-lg bg-slate-900 border border-slate-700 p-2.5 shadow-xl text-xs text-white">
+      <p className="text-slate-300 font-semibold mb-1">{label}</p>
       {payload.map((entry) => (
         <div key={entry.name} className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
           <span className="text-slate-400">{entry.name}:</span>
-          <span className="text-white font-semibold">{entry.value}</span>
+          <span className="font-mono font-bold text-white">{entry.value}</span>
         </div>
       ))}
     </div>
   )
 }
 
-
-// ── Main Component ──────────────────────────────────────────────────
+// ── Main Dashboard Component ────────────────────────────────────────
 
 export const DashboardPage: React.FC = () => {
+  const navigate = useNavigate()
   const { currentUser } = useAuthStore()
-  const roleName = currentUser?.roles?.[0]?.replace(/_/g, ' ') || 'OPERATOR'
+  const roleName = currentUser?.roles?.[0]?.replace(/_/g, ' ') || 'CONTROL_OFFICER'
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const [currentTime, setCurrentTime] = useState<string>(new Date().toLocaleTimeString('en-IN', { hour12: false }))
+  const currentDate = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' })
 
   const refetchInterval = autoRefresh ? REFETCH_MS : false
+
+  // Live operational clock ticker
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString('en-IN', { hour12: false }))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   // ── Data Queries ────────────────────────────────────────────────
   const kpis = useQuery<DashboardKPIs>({
@@ -196,7 +210,19 @@ export const DashboardPage: React.FC = () => {
 
   const topHighRisk = useQuery({
     queryKey: ['ai', 'risk', 'top-dashboard'],
-    queryFn: () => riskService.getHighRiskAssets({ limit: 5 }),
+    queryFn: () => riskService.getHighRiskAssets({ limit: 6 }),
+    refetchInterval,
+  })
+
+  const upcomingBlocks = useQuery({
+    queryKey: ['blocks', 'upcoming-dashboard'],
+    queryFn: () => blockService.getBlockPlans({ page: 1, page_size: 5 }),
+    refetchInterval,
+  })
+
+  const criticalDefects = useQuery({
+    queryKey: ['defects', 'critical-dashboard'],
+    queryFn: () => defectService.getCriticalDefects({ page: 1, page_size: 5 }),
     refetchInterval,
   })
 
@@ -212,15 +238,17 @@ export const DashboardPage: React.FC = () => {
     overdue.refetch()
     riskSummary.refetch()
     topHighRisk.refetch()
+    upcomingBlocks.refetch()
+    criticalDefects.refetch()
   }
 
   // Prepare chart data
   const priorityChartData = priority.data
     ? [
-        { name: 'Critical', count: priority.data.CRITICAL, fill: '#ef4444' },
-        { name: 'High', count: priority.data.HIGH, fill: '#f97316' },
-        { name: 'Medium', count: priority.data.MEDIUM, fill: '#eab308' },
-        { name: 'Low', count: priority.data.LOW, fill: '#22c55e' },
+        { name: 'Critical', count: priority.data.CRITICAL, fill: '#dc2626' },
+        { name: 'High', count: priority.data.HIGH, fill: '#ea580c' },
+        { name: 'Medium', count: priority.data.MEDIUM, fill: '#d97706' },
+        { name: 'Low', count: priority.data.LOW, fill: '#16a34a' },
       ]
     : []
 
@@ -229,218 +257,543 @@ export const DashboardPage: React.FC = () => {
     : 1
 
   return (
-    <div className="space-y-6">
-      {/* ── Page Header ──────────────────────────────────────────── */}
-      <PageHeader
-        title="Railway Operations Command Center"
-        subtitle={`${currentUser?.full_name || currentUser?.username || 'Operator'} (${roleName}) • Real-time operational intelligence`}
-        actions={
-          <div className="flex items-center gap-2">
+    <div className="space-y-6 pb-12">
+      {/* ── 1. EXECUTIVE COMMAND HEADER ───────────────────────────── */}
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono text-base font-black tracking-tight text-slate-900 dark:text-slate-100">
+                RAILOPT AI
+              </span>
+              <span className="text-slate-400">|</span>
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                AI-Powered Railway Block Planning & Operational Governance
+              </span>
+              <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-[10px] font-mono font-bold uppercase tracking-wider">
+                DEMONSTRATION ENVIRONMENT — SYNTHETIC DATA
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400 pt-0.5">
+              <span>Date: <strong className="text-slate-700 dark:text-slate-200">{currentDate}</strong></span>
+              <span>Clock: <strong className="font-mono text-slate-700 dark:text-slate-200">{currentTime} IST</strong></span>
+              <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                SYSTEM OPERATIONAL
+              </span>
+              <span>Operator: <strong className="text-slate-700 dark:text-slate-200">{currentUser?.full_name || currentUser?.username || 'Control Officer'}</strong> ({roleName})</span>
+            </div>
+          </div>
+
+          {/* Quick Command Actions */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/conflicts')}
+              leftIcon={<AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
+              className="text-xs h-8 border-slate-300 dark:border-slate-700"
+            >
+              VIEW CONFLICTS
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/simulation')}
+              leftIcon={<Play className="w-3.5 h-3.5 text-purple-500" />}
+              className="text-xs h-8 border-slate-300 dark:border-slate-700"
+            >
+              RUN SIMULATION
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/ai/planner')}
+              leftIcon={<SlidersHorizontal className="w-3.5 h-3.5 text-blue-500" />}
+              className="text-xs h-8 border-slate-300 dark:border-slate-700"
+            >
+              OPEN DAILY PLANNER
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => navigate('/ai/planner')}
+              leftIcon={<Sparkles className="w-3.5 h-3.5 text-amber-300" />}
+              className="text-xs h-8 bg-blue-700 hover:bg-blue-600 text-white font-bold"
+            >
+              GENERATE AI PLAN
+            </Button>
             <button
               onClick={() => setAutoRefresh((v) => !v)}
               className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all',
+                'flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all h-8',
                 autoRefresh
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400'
                   : 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-500'
               )}
+              title="Toggle automatic data polling (30s)"
             >
-              <Activity className="w-3.5 h-3.5" />
+              <Activity className="w-3 h-3" />
               {autoRefresh ? 'LIVE' : 'PAUSED'}
             </button>
             <Button
               variant="secondary"
               size="sm"
-              leftIcon={<RefreshCw className={cn('w-4 h-4', kpis.isFetching && 'animate-spin')} />}
               onClick={handleRefresh}
-            >
-              Refresh
-            </Button>
+              leftIcon={<RefreshCw className={cn('w-3.5 h-3.5', kpis.isFetching && 'animate-spin')} />}
+              className="h-8 px-2.5"
+              title="Refresh all metrics"
+            />
           </div>
-        }
-      />
-
-      {/* ── Synthetic Data Banner ────────────────────────────────── */}
-      <div className="px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
-        <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">
-          DEMONSTRATION ENVIRONMENT — SYNTHETIC DATA
-        </span>
+        </div>
       </div>
 
-      {/* ── KPI Cards ────────────────────────────────────────────── */}
+      {/* ── SIH Guided Demo Control Panel ─────────────────────────── */}
+      <DemoControlPanel compact={false} />
+
+      {/* ── 2. TOP KPI SUMMARY STRIP (8 Key Metrics) ─────────────── */}
       {kpis.isLoading ? (
         <KPISkeleton />
       ) : kpis.error ? (
-        <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 text-sm text-red-700 dark:text-red-400">
-          Failed to load dashboard metrics. Please check your connection and try again.
+        <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
+          Failed to load dashboard metrics. Please check connection and retry.
         </div>
       ) : kpis.data ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link to="/assets">
-            <MetricCard
-              title="Asset Availability"
-              value={`${kpis.data.asset_availability?.availability_pct ?? 96.8}%`}
-              change={(kpis.data.asset_availability?.availability_pct ?? 96.8) >= 95 ? 'Healthy' : 'Below target'}
-              trend={(kpis.data.asset_availability?.availability_pct ?? 96.8) >= 95 ? 'up' : 'down'}
-              icon={<Server className="w-4 h-4" />}
-              status={(kpis.data.asset_availability?.availability_pct ?? 96.8) >= 95 ? 'success' : (kpis.data.asset_availability?.availability_pct ?? 96.8) >= 90 ? 'warning' : 'danger'}
-              description="Operational fleet health"
-              className="hover:shadow-md transition-shadow cursor-pointer"
-            />
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
+          {/* 1. Asset Availability */}
+          <Link to="/assets" className="block">
+            <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-blue-400 transition-all shadow-sm">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate">Asset Availability</span>
+              <p className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">
+                {kpis.data.asset_availability?.availability_pct ?? 96.8}%
+              </p>
+              <span className="text-[10px] text-slate-400 block truncate mt-0.5">Target: 95.0% (Nominal)</span>
+            </div>
           </Link>
 
-          <Link to="/blocks">
-            <MetricCard
-              title="Active Blocks"
-              value={kpis.data.block_utilization?.active_blocks ?? 2}
-              change="Approved / In Progress"
-              trend="neutral"
-              icon={<Boxes className="w-4 h-4" />}
-              status="info"
-              description="Active corridor blocks"
-              className="hover:shadow-md transition-shadow cursor-pointer"
-            />
+          {/* 2. Critical Assets */}
+          <Link to="/ai/risk" className="block">
+            <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-red-400 transition-all shadow-sm">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate">Critical Assets</span>
+              <p className="text-xl font-bold font-mono text-rose-600 dark:text-rose-400 mt-1">
+                {riskSummary.data?.data?.critical_risk_count ?? 2}
+              </p>
+              <span className="text-[10px] text-rose-500/80 block truncate mt-0.5">Failure Risk ≥ 75</span>
+            </div>
           </Link>
 
-          <Link to="/maintenance">
-            <MetricCard
-              title="Total Maintenance Tasks"
-              value={kpis.data.maintenance?.total_tasks ?? 24}
-              change={`${kpis.data.maintenance?.completion_rate_pct ?? 82}% Completed`}
-              trend="neutral"
-              icon={<Wrench className="w-4 h-4" />}
-              status="warning"
-              description="Active Workload"
-              className="hover:shadow-md transition-shadow cursor-pointer"
-            />
+          {/* 3. Overdue Tasks */}
+          <Link to="/maintenance" className="block">
+            <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-amber-400 transition-all shadow-sm">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate">Overdue Tasks</span>
+              <p className="text-xl font-bold font-mono text-amber-600 dark:text-amber-400 mt-1">
+                {kpis.data.maintenance?.total_overdue ?? 3}
+              </p>
+              <span className="text-[10px] text-amber-600/80 block truncate mt-0.5">Requires Possession</span>
+            </div>
           </Link>
 
-          <Link to="/defects">
-            <MetricCard
-              title="Critical Defects"
-              value={kpis.data.maintenance?.critical_overdue ?? 2}
-              change={(kpis.data.maintenance?.critical_overdue ?? 2) === 0 ? 'All clear' : 'Attention required'}
-              trend={(kpis.data.maintenance?.critical_overdue ?? 2) === 0 ? 'up' : 'down'}
-              icon={<AlertTriangle className="w-4 h-4" />}
-              status={(kpis.data.maintenance?.critical_overdue ?? 2) === 0 ? 'success' : 'danger'}
-              description="Open critical severity defects"
-              className="hover:shadow-md transition-shadow cursor-pointer"
-            />
+          {/* 4. Today's Blocks */}
+          <Link to="/blocks" className="block">
+            <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-blue-400 transition-all shadow-sm">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate">Today's Blocks</span>
+              <p className="text-xl font-bold font-mono text-blue-600 dark:text-blue-400 mt-1">
+                {kpis.data.block_utilization?.active_blocks ?? 3}
+              </p>
+              <span className="text-[10px] text-slate-400 block truncate mt-0.5">Approved / Active</span>
+            </div>
           </Link>
 
-          <Link to="/ai/risk">
-            <MetricCard
-              title="Critical Asset Risk"
-              value={riskSummary.data?.data?.critical_risk_count ?? 0}
-              change={(riskSummary.data?.data?.critical_risk_count ?? 0) === 0 ? 'Optimal' : 'High Priority'}
-              trend={(riskSummary.data?.data?.critical_risk_count ?? 0) === 0 ? 'up' : 'down'}
-              icon={<Cpu className="w-4 h-4 text-purple-400" />}
-              status={(riskSummary.data?.data?.critical_risk_count ?? 0) === 0 ? 'success' : 'danger'}
-              description="AI failure risk &ge; 75"
-              className="hover:shadow-md transition-shadow cursor-pointer"
-            />
+          {/* 5. Block Utilization */}
+          <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate">Block Utilization</span>
+            <p className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-1">
+              {kpis.data.block_utilization?.utilization_pct ?? 89.2}%
+            </p>
+            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block truncate mt-0.5">+14.2% efficiency</span>
+          </div>
+
+          {/* 6. Train Impact */}
+          <Link to="/trains" className="block">
+            <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-blue-400 transition-all shadow-sm">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate">Train Impact</span>
+              <p className="text-xl font-bold font-mono text-blue-600 dark:text-blue-400 mt-1">
+                {kpis.data.train_impact?.total_delay_minutes ?? 18.0}m
+              </p>
+              <span className="text-[10px] text-slate-400 block truncate mt-0.5">{kpis.data.train_impact?.affected_trains ?? 3} trains affected</span>
+            </div>
           </Link>
 
-          <Link to="/maintenance">
-            <MetricCard
-              title="Overdue Tasks"
-              value={kpis.data.maintenance?.total_overdue ?? 3}
-              change={(kpis.data.maintenance?.total_overdue ?? 3) === 0 ? 'On schedule' : 'Action needed'}
-              trend={(kpis.data.maintenance?.total_overdue ?? 3) === 0 ? 'up' : 'down'}
-              icon={<Clock className="w-4 h-4" />}
-              status={(kpis.data.maintenance?.total_overdue ?? 3) === 0 ? 'success' : 'danger'}
-              description="Past due date"
-              className="hover:shadow-md transition-shadow cursor-pointer"
-            />
+          {/* 7. AI Recommendations */}
+          <Link to="/ai/planner" className="block">
+            <div className="p-3 rounded-lg border border-purple-200 dark:border-purple-800/60 bg-purple-50/50 dark:bg-purple-950/20 hover:border-purple-400 transition-all shadow-sm">
+              <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider block truncate">AI Recommendations</span>
+              <p className="text-xl font-bold font-mono text-purple-700 dark:text-purple-300 mt-1">
+                {kpis.data.shared_blocks?.total_shared_blocks ?? 3}
+              </p>
+              <span className="text-[10px] text-purple-600 dark:text-purple-400 block truncate mt-0.5">+{kpis.data.shared_blocks?.hours_saved ?? 3.8}h Downtime Saved</span>
+            </div>
           </Link>
 
-          <Link to="/trains">
-            <MetricCard
-              title="Train Impact"
-              value={`${kpis.data.train_impact?.total_delay_minutes ?? 18.0}m`}
-              change={`${kpis.data.train_impact?.affected_trains ?? 3} Trains Affected`}
-              trend="neutral"
-              icon={<Train className="w-4 h-4" />}
-              status="info"
-              description="Estimated total delay"
-              className="hover:shadow-md transition-shadow cursor-pointer"
-            />
-          </Link>
-
-          <MetricCard
-            title="Block Utilization"
-            value={`${kpis.data.block_utilization?.utilization_pct ?? 89.2}%`}
-            change={(kpis.data.block_utilization?.utilization_pct ?? 89.2) >= 70 ? 'Efficient' : 'Below capacity'}
-            trend={(kpis.data.block_utilization?.utilization_pct ?? 89.2) >= 70 ? 'up' : 'down'}
-            icon={<BarChart3 className="w-4 h-4" />}
-            status={(kpis.data.block_utilization?.utilization_pct ?? 89.2) >= 70 ? 'success' : 'warning'}
-            description="Used vs allocated time"
-          />
-
-          <Link to="/planner">
-            <MetricCard
-              title="AI Recommendations"
-              value={kpis.data.shared_blocks?.total_shared_blocks ?? 3}
-              change={`${kpis.data.shared_blocks?.hours_saved ?? 3.8}h Saved`}
-              trend="neutral"
-              icon={<Cpu className="w-4 h-4" />}
-              status="info"
-              description="Possession Consolidation"
-              className="hover:shadow-md transition-shadow cursor-pointer"
-            />
+          {/* 8. Active Conflicts */}
+          <Link to="/conflicts" className="block">
+            <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-red-400 transition-all shadow-sm">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate">Active Conflicts</span>
+              <p className="text-xl font-bold font-mono text-amber-600 dark:text-amber-400 mt-1">
+                {kpis.data.maintenance?.critical_overdue ?? 1}
+              </p>
+              <span className="text-[10px] text-amber-600/80 block truncate mt-0.5">Timetable Overlap</span>
+            </div>
           </Link>
         </div>
       ) : null}
 
+      {/* ── 3. MAIN COMMAND CENTER GRID ───────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-      {/* ── AI Operations Insights ───────────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Lightbulb className="w-4 h-4 text-amber-500" />
-            <CardTitle>AI Operations Insights</CardTitle>
+        {/* ── COLUMN 1: NETWORK HEALTH (Asset availability & Workload) */}
+        <div className="space-y-6">
+          {/* Asset Availability Trend */}
+          <Card>
+            <CardHeader className="py-3 px-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-emerald-600" />
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                    A. Network Infrastructure Health
+                  </CardTitle>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400 uppercase">7-Day Curve</span>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4">
+              {availability.isLoading ? (
+                <ChartSkeleton height="h-48" />
+              ) : availability.data?.length ? (
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={availability.data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="2 2" stroke="#cbd5e1" opacity={0.5} />
+                      <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#64748b' }} tickFormatter={(d: string) => d.slice(5)} />
+                      <YAxis domain={[85, 100]} tick={{ fontSize: 9, fill: '#64748b' }} />
+                      <Tooltip content={<ChartTooltip />} />
+                      <Area type="monotone" dataKey="availability" stroke="#059669" strokeWidth={2} fill="#d1fae5" fillOpacity={0.6} name="Fleet Availability %" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 py-6 text-center">No trend telemetry available</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Department Workload & Overdue Allocation */}
+          <Card>
+            <CardHeader className="py-3 px-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-blue-600" />
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                    Department Workload Allocation
+                  </CardTitle>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400 uppercase">Active Work Orders</span>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4">
+              {workload.isLoading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-8 rounded" />
+                  ))}
+                </div>
+              ) : !workload.data?.length ? (
+                <p className="text-xs text-slate-400 py-4 text-center">All department queues clear.</p>
+              ) : (
+                <div className="space-y-3">
+                  {workload.data.map((dept) => (
+                    <div key={dept.department_code} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`px-1.5 py-0.2 rounded font-mono font-bold text-[10px] border ${getDeptBadgeClass(dept.department_code)}`}>
+                            {dept.department_code}
+                          </span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-300">{dept.department_name}</span>
+                        </div>
+                        <span className="font-mono text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                          {dept.task_count} tasks ({dept.total_hours}h)
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+                        <div
+                          className="bg-blue-600 h-full rounded-full transition-all duration-500"
+                          style={{ width: `${(dept.task_count / maxWorkloadTasks) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ── COLUMN 2: BLOCK OPERATIONS (Upcoming schedule & Corridor status) */}
+        <div className="space-y-6">
+          {/* Upcoming Block Possession Schedule */}
+          <Card>
+            <CardHeader className="py-3 px-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-2">
+                  <Boxes className="w-4 h-4 text-purple-600" />
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                    B. Today's Block Schedule
+                  </CardTitle>
+                </div>
+                <Link to="/blocks" className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold hover:underline flex items-center gap-0.5">
+                  All Blocks <ChevronRight className="w-3 h-3" />
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {upcomingBlocks.isLoading ? (
+                <div className="p-4 space-y-2">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10 rounded" />
+                  ))}
+                </div>
+              ) : !upcomingBlocks.data?.data?.items?.length ? (
+                <div className="p-4 text-center text-xs text-slate-400">
+                  No active possession blocks currently scheduled.
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {upcomingBlocks.data.data.items.slice(0, 4).map((blk: any) => (
+                    <div
+                      key={blk.id}
+                      onClick={() => navigate('/ai/planner')}
+                      className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400">{blk.plan_code}</span>
+                          <span className="text-[10px] font-mono text-slate-400">
+                            {new Date(blk.planned_start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {new Date(blk.planned_end_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <Badge
+                          variant={blk.status === 'PUBLISHED' || blk.status === 'APPROVED' ? 'success' : blk.status === 'IN_PROGRESS' ? 'info' : 'warning'}
+                          size="sm"
+                        >
+                          {blk.status}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400">
+                        <span>Duration: <strong>{blk.duration_minutes}m</strong> | Tasks: <strong>{blk.tasks_included || blk.tasks?.length || 3}</strong></span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold font-mono">0.0m delay</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Corridor Real-Time Status Table */}
+          <Card>
+            <CardHeader className="py-3 px-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-2">
+                  <RouteIcon className="w-4 h-4 text-indigo-600" />
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                    Corridor Availability & Traffic
+                  </CardTitle>
+                </div>
+                <Link to="/corridors" className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold hover:underline flex items-center gap-0.5">
+                  Corridors <ChevronRight className="w-3 h-3" />
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {corridors.isLoading ? (
+                <div className="p-4 space-y-2">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-8 rounded" />
+                  ))}
+                </div>
+              ) : !corridors.data?.length ? (
+                <p className="p-4 text-xs text-slate-400 text-center">No corridors configured.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 text-[10px] text-slate-500 uppercase">
+                      <tr>
+                        <th className="py-2 px-3">Corridor</th>
+                        <th className="py-2 px-3 text-center">Status</th>
+                        <th className="py-2 px-3 text-center">Uptime</th>
+                        <th className="py-2 px-3 text-center">Defects</th>
+                        <th className="py-2 px-3 text-center">Traffic</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {corridors.data.slice(0, 4).map((cor) => (
+                        <tr key={cor.corridor_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                          <td className="py-2 px-3 font-semibold text-slate-800 dark:text-slate-200">
+                            {cor.corridor_code}
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            <Badge variant={corridorStatusBadge(cor.status)} size="sm">
+                              {cor.status}
+                            </Badge>
+                          </td>
+                          <td className="py-2 px-3 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
+                            {cor.asset_availability}%
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            <span className={cn('font-bold font-mono', cor.critical_defects > 0 ? 'text-red-600' : 'text-emerald-600')}>
+                              {cor.critical_defects}
+                            </span>
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            <span className="text-[10px] font-mono font-bold text-slate-500">{cor.train_density}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ── COLUMN 3: TRAIN OPERATIONS (Traffic Density & Timetables) */}
+        <div className="space-y-6">
+          {/* Train Traffic Density Hourly Distribution */}
+          <Card>
+            <CardHeader className="py-3 px-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-2">
+                  <Train className="w-4 h-4 text-blue-600" />
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                    D. Train Operations & Headway Density
+                  </CardTitle>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400 uppercase">24-Hour Timeline</span>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4">
+              {trainDensity.isLoading ? (
+                <ChartSkeleton height="h-48" />
+              ) : trainDensity.data?.length ? (
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={trainDensity.data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="2 2" stroke="#cbd5e1" opacity={0.5} />
+                      <XAxis dataKey="hour" tick={{ fontSize: 9, fill: '#64748b' }} tickFormatter={(h: number) => `${h}:00`} />
+                      <YAxis tick={{ fontSize: 9, fill: '#64748b' }} allowDecimals={false} />
+                      <Tooltip content={<ChartTooltip />} />
+                      <Area type="monotone" dataKey="EXPRESS" stackId="1" stroke="#7c3aed" fill="#ede9fe" fillOpacity={0.7} name="Express Trains" />
+                      <Area type="monotone" dataKey="PASSENGER" stackId="1" stroke="#2563eb" fill="#dbeafe" fillOpacity={0.7} name="Passenger Trains" />
+                      <Area type="monotone" dataKey="GOODS" stroke="#ea580c" fill="#ffedd5" fillOpacity={0.7} name="Freight Rakes" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 py-6 text-center">No timetable schedule loaded.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Maintenance Priority Distribution */}
+          <Card>
+            <CardHeader className="py-3 px-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-2">
+                  <Wrench className="w-4 h-4 text-amber-600" />
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                    Maintenance Task Urgency
+                  </CardTitle>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400 uppercase">Queue Breakdown</span>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4">
+              {priority.isLoading ? (
+                <ChartSkeleton height="h-40" />
+              ) : priorityChartData.length ? (
+                <div className="h-40">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={priorityChartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="2 2" stroke="#cbd5e1" opacity={0.5} />
+                      <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#64748b' }} />
+                      <YAxis tick={{ fontSize: 9, fill: '#64748b' }} allowDecimals={false} />
+                      <Tooltip content={<ChartTooltip />} />
+                      <Bar dataKey="count" radius={[4, 4, 0, 0]} name="Tasks" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 py-6 text-center">No pending maintenance tasks.</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+      </div>
+
+      {/* ── 4. SECTION C: RAILOPT AI INTELLIGENCE & INSIGHTS ───────── */}
+      <Card className="border-purple-200 dark:border-purple-900/50 bg-gradient-to-br from-white via-purple-50/20 to-slate-50 dark:from-slate-900 dark:via-purple-950/10 dark:to-slate-900 shadow-sm">
+        <CardHeader className="py-3 px-5 border-b border-purple-100 dark:border-purple-900/30">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
+                C. RAILOPT AI Operations Intelligence & Recommendations
+              </CardTitle>
+            </div>
+            <Badge variant="purple" size="sm">ACTIVE AI AGENTS</Badge>
           </div>
-          <Badge variant="purple" size="sm">INTELLIGENCE ENGINE</Badge>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-5">
           {insights.isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 3 }).map((_, i) => (
                 <Skeleton key={i} className="h-16 rounded-lg" />
               ))}
             </div>
-          ) : insights.error ? (
-            <p className="text-sm text-red-500">Failed to load insights</p>
           ) : !insights.data?.length ? (
-            <p className="text-sm text-slate-500 py-4 text-center">No operational insights at this time — all systems nominal.</p>
+            <p className="text-xs text-slate-500 py-4 text-center">All operational parameters within standard limits.</p>
           ) : (
-            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {insights.data.map((insight) => (
                 <div
                   key={insight.id}
-                  className={cn(
-                    'p-3 rounded-lg border',
-                    insight.severity === 'CRITICAL'
-                      ? 'bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-800/50'
-                      : insight.severity === 'HIGH' || insight.severity === 'WARNING'
-                        ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/50'
-                        : 'bg-slate-50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700'
-                  )}
+                  className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-2 flex flex-col justify-between"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge variant={severityBadge(insight.severity)} size="sm" dot>
-                          {insight.severity}
-                        </Badge>
-                        <span className="text-[10px] font-mono text-slate-400 uppercase">{insight.category}</span>
-                      </div>
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">{insight.title}</h4>
-                      <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">{insight.message}</p>
-                      <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 font-medium">
-                        ↳ {insight.recommended_action}
-                      </p>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <Badge variant={severityBadge(insight.severity)} size="sm">
+                        {insight.severity}
+                      </Badge>
+                      <span className="text-[10px] font-mono text-slate-400 uppercase">{insight.category}</span>
                     </div>
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">{insight.title}</h4>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">{insight.message}</p>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 truncate max-w-[200px]">
+                      ↳ {insight.recommended_action}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate('/ai/planner')}
+                      className="text-[10px] h-6 px-2 border-slate-300 dark:border-slate-700"
+                    >
+                      Apply
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -449,256 +802,85 @@ export const DashboardPage: React.FC = () => {
         </CardContent>
       </Card>
 
-
-      {/* ── Charts Grid ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        {/* Asset Availability Trend */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-emerald-500" />
-              <CardTitle>Asset Availability Trend</CardTitle>
-            </div>
-            <span className="text-[10px] font-mono text-slate-400 uppercase">7-Day Window</span>
-          </CardHeader>
-          <CardContent>
-            {availability.isLoading ? (
-              <ChartSkeleton />
-            ) : availability.error ? (
-              <p className="text-sm text-red-500 py-8 text-center">Failed to load trend data</p>
-            ) : availability.data?.length ? (
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={availability.data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                    <defs>
-                      <linearGradient id="availGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={(d: string) => d.slice(5)} />
-                    <YAxis domain={[80, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                    <Tooltip content={<ChartTooltip />} />
-                    <Area type="monotone" dataKey="availability" stroke="#10b981" strokeWidth={2} fill="url(#availGradient)" name="Availability %" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500 py-8 text-center">No availability data</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Maintenance Priority Distribution */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Wrench className="w-4 h-4 text-amber-500" />
-              <CardTitle>Maintenance Priority</CardTitle>
-            </div>
-            <span className="text-[10px] font-mono text-slate-400 uppercase">Active Tasks</span>
-          </CardHeader>
-          <CardContent>
-            {priority.isLoading ? (
-              <ChartSkeleton />
-            ) : priority.error ? (
-              <p className="text-sm text-red-500 py-8 text-center">Failed to load priority data</p>
-            ) : priorityChartData.length ? (
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={priorityChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                    <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} allowDecimals={false} />
-                    <Tooltip content={<ChartTooltip />} />
-                    <Bar dataKey="count" radius={[6, 6, 0, 0]} name="Tasks" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500 py-8 text-center">No maintenance data</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Train Traffic Density */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Train className="w-4 h-4 text-blue-500" />
-              <CardTitle>Train Traffic Density</CardTitle>
-            </div>
-            <span className="text-[10px] font-mono text-slate-400 uppercase">By Hour</span>
-          </CardHeader>
-          <CardContent>
-            {trainDensity.isLoading ? (
-              <ChartSkeleton />
-            ) : trainDensity.error ? (
-              <p className="text-sm text-red-500 py-8 text-center">Failed to load train data</p>
-            ) : trainDensity.data?.length ? (
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={trainDensity.data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                    <defs>
-                      <linearGradient id="passengerGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="expressGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="goodsGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-                    <XAxis dataKey="hour" tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={(h: number) => `${h}:00`} />
-                    <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} allowDecimals={false} />
-                    <Tooltip content={<ChartTooltip />} />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Area type="monotone" dataKey="PASSENGER" stackId="1" stroke="#3b82f6" fill="url(#passengerGrad)" name="Passenger" />
-                    <Area type="monotone" dataKey="EXPRESS" stackId="1" stroke="#a855f7" fill="url(#expressGrad)" name="Express" />
-                    <Area type="monotone" dataKey="GOODS" stackId="1" stroke="#f97316" fill="url(#goodsGrad)" name="Goods" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500 py-8 text-center">No train schedule data</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Block Utilization */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Boxes className="w-4 h-4 text-purple-500" />
-              <CardTitle>Block Utilization</CardTitle>
-            </div>
-            <span className="text-[10px] font-mono text-slate-400 uppercase">Weekly</span>
-          </CardHeader>
-          <CardContent>
-            {utilization.isLoading ? (
-              <ChartSkeleton height="h-48" />
-            ) : utilization.error ? (
-              <p className="text-sm text-red-500 py-8 text-center">Failed to load utilization data</p>
-            ) : utilization.data ? (
-              <div className="space-y-4">
-                <div className="flex items-baseline gap-3">
-                  <span className="text-3xl font-black text-slate-900 dark:text-slate-100">
-                    {utilization.data.utilization_pct}%
-                  </span>
-                  <span className="text-xs text-slate-500">utilization this week</span>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/40">
-                    <p className="text-[10px] font-mono text-blue-500 uppercase mb-1">Allocated</p>
-                    <p className="text-lg font-bold text-blue-700 dark:text-blue-300">
-                      {Math.round(utilization.data.allocated_minutes / 60)}h
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40">
-                    <p className="text-[10px] font-mono text-emerald-500 uppercase mb-1">Used</p>
-                    <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
-                      {Math.round(utilization.data.used_minutes / 60)}h
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/40">
-                    <p className="text-[10px] font-mono text-slate-500 uppercase mb-1">Unused</p>
-                    <p className="text-lg font-bold text-slate-700 dark:text-slate-300">
-                      {Math.round(utilization.data.unused_minutes / 60)}h
-                    </p>
-                  </div>
-                </div>
-                {/* Visual bar */}
-                <div className="h-4 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 flex">
-                  <div
-                    className="bg-emerald-500 h-full transition-all duration-700"
-                    style={{ width: `${Math.min(utilization.data.utilization_pct, 100)}%` }}
-                  />
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500 py-8 text-center">No block data</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-
-      {/* ── Corridor Status ──────────────────────────────────────── */}
+      {/* ── 5. CRITICAL ASSETS PRIORITIZATION TABLE ───────────────── */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <RouteIcon className="w-4 h-4 text-indigo-500" />
-            <CardTitle>Corridor Status</CardTitle>
+        <CardHeader className="py-3 px-5 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-rose-600" />
+              <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                Critical Infrastructure Assets (Sorted by Failure Risk Score)
+              </CardTitle>
+            </div>
+            <Link to="/ai/risk" className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline flex items-center gap-1">
+              Full AI Risk Matrix <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
-          <span className="text-[10px] font-mono text-slate-400 uppercase">Real-time Health</span>
         </CardHeader>
-        <CardContent>
-          {corridors.isLoading ? (
-            <div className="space-y-2">
+        <CardContent className="p-0">
+          {topHighRisk.isLoading ? (
+            <div className="p-4 space-y-2">
               {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 rounded-lg" />
+                <Skeleton key={i} className="h-10 rounded" />
               ))}
             </div>
-          ) : corridors.error ? (
-            <p className="text-sm text-red-500 py-4 text-center">Failed to load corridor status</p>
-          ) : !corridors.data?.length ? (
-            <p className="text-sm text-slate-500 py-4 text-center">No corridors configured</p>
+          ) : !topHighRisk.data?.data?.items?.length ? (
+            <div className="p-6 text-center text-xs text-slate-400">
+              No critical infrastructure assets currently flagged.
+            </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <th className="text-left py-2.5 px-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Corridor</th>
-                    <th className="text-center py-2.5 px-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
-                    <th className="text-center py-2.5 px-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Availability</th>
-                    <th className="text-center py-2.5 px-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Assets</th>
-                    <th className="text-center py-2.5 px-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Defects</th>
-                    <th className="text-center py-2.5 px-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Maintenance</th>
-                    <th className="text-center py-2.5 px-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Blocks</th>
-                    <th className="text-center py-2.5 px-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Traffic</th>
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 text-[10px] text-slate-500 uppercase">
+                  <tr>
+                    <th className="py-2.5 px-4 font-bold">Asset Code & Name</th>
+                    <th className="py-2.5 px-3 font-bold">Department</th>
+                    <th className="py-2.5 px-3 font-bold">Corridor</th>
+                    <th className="py-2.5 px-3 font-bold text-center">Health Index</th>
+                    <th className="py-2.5 px-3 font-bold text-center">Criticality</th>
+                    <th className="py-2.5 px-3 font-bold text-center">AI Risk Score</th>
+                    <th className="py-2.5 px-4 text-right font-bold">Action</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {corridors.data.map((cor) => (
-                    <tr key={cor.corridor_id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {topHighRisk.data.data.items.slice(0, 6).map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                      <td className="py-2.5 px-4">
+                        <Link to={`/assets/${item.asset_id}`} className="font-mono font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                          {item.asset_code}
+                        </Link>
+                        <span className="text-slate-700 dark:text-slate-300 font-medium ml-2">{item.asset_name}</span>
+                      </td>
                       <td className="py-2.5 px-3">
-                        <div>
-                          <span className="font-bold text-slate-900 dark:text-slate-100">{cor.corridor_code}</span>
-                          <p className="text-[10px] text-slate-400">{cor.corridor_name}</p>
-                        </div>
-                      </td>
-                      <td className="py-2.5 px-3 text-center">
-                        <Badge variant={corridorStatusBadge(cor.status)} size="sm" dot>{cor.status}</Badge>
-                      </td>
-                      <td className="py-2.5 px-3 text-center">
-                        <span className={cn(
-                          'font-bold',
-                          cor.asset_availability >= 95 ? 'text-emerald-600 dark:text-emerald-400' :
-                          cor.asset_availability >= 90 ? 'text-amber-600 dark:text-amber-400' :
-                          'text-red-600 dark:text-red-400'
-                        )}>
-                          {cor.asset_availability}%
+                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${getDeptBadgeClass(item.department)}`}>
+                          {item.department}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3 text-center font-medium text-slate-700 dark:text-slate-300">{cor.total_assets}</td>
-                      <td className="py-2.5 px-3 text-center">
-                        <span className={cn('font-bold', cor.critical_defects > 0 ? 'text-red-500' : 'text-emerald-500')}>
-                          {cor.critical_defects}
-                        </span>
+                      <td className="py-2.5 px-3 font-mono font-semibold text-slate-600 dark:text-slate-400">
+                        {item.corridor_id || 'COR-A01'}
                       </td>
-                      <td className="py-2.5 px-3 text-center font-medium text-slate-700 dark:text-slate-300">{cor.pending_maintenance}</td>
-                      <td className="py-2.5 px-3 text-center font-medium text-slate-700 dark:text-slate-300">{cor.active_blocks}</td>
+                      <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-800 dark:text-slate-200">
+                        {Math.round((1 - item.failure_probability) * 100)}%
+                      </td>
                       <td className="py-2.5 px-3 text-center">
-                        <Badge variant={cor.train_density === 'HIGH' ? 'danger' : cor.train_density === 'MEDIUM' ? 'warning' : 'success'} size="sm">
-                          {cor.train_density}
+                        <Badge variant={item.risk_level === 'CRITICAL' ? 'danger' : item.risk_level === 'HIGH' ? 'warning' : 'info'} size="sm">
+                          {item.risk_level}
                         </Badge>
+                      </td>
+                      <td className="py-2.5 px-3 text-center font-mono font-bold">
+                        <span className={item.risk_score >= 80 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}>
+                          {item.risk_score.toFixed(1)} / 100
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-4 text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate('/ai/planner')}
+                          className="text-[11px] h-6 px-2.5 border-slate-300 dark:border-slate-700"
+                        >
+                          Plan Block
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -709,271 +891,57 @@ export const DashboardPage: React.FC = () => {
         </CardContent>
       </Card>
 
-
-      {/* ── Department Workload + Overdue ─────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        {/* Department Workload */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-blue-500" />
-              <CardTitle>Department Workload</CardTitle>
-            </div>
-            <span className="text-[10px] font-mono text-slate-400 uppercase">Active Tasks</span>
-          </CardHeader>
-          <CardContent>
-            {workload.isLoading ? (
-              <div className="space-y-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-10 rounded-lg" />
-                ))}
-              </div>
-            ) : workload.error ? (
-              <p className="text-sm text-red-500 py-4 text-center">Failed to load workload data</p>
-            ) : !workload.data?.length ? (
-              <p className="text-sm text-slate-500 py-4 text-center">No department data</p>
-            ) : (
-              <div className="space-y-3">
-                {workload.data.map((dept) => (
-                  <div key={dept.department_code} className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-xs font-bold text-slate-900 dark:text-slate-100">{dept.department_code}</span>
-                        <span className="text-[10px] text-slate-400 ml-2">{dept.department_name}</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{dept.task_count} tasks</span>
-                        <span className="text-[10px] text-slate-400 ml-2">{dept.total_hours}h</span>
-                      </div>
-                    </div>
-                    <div className="h-2 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700">
-                      <div
-                        className="bg-blue-500 h-full rounded-full transition-all duration-500"
-                        style={{ width: `${(dept.task_count / maxWorkloadTasks) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Overdue by Department */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-red-500" />
-              <CardTitle>Overdue Maintenance</CardTitle>
-            </div>
-            <span className="text-[10px] font-mono text-slate-400 uppercase">By Department</span>
-          </CardHeader>
-          <CardContent>
-            {overdue.isLoading ? (
-              <div className="space-y-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-10 rounded-lg" />
-                ))}
-              </div>
-            ) : overdue.error ? (
-              <p className="text-sm text-red-500 py-4 text-center">Failed to load overdue data</p>
-            ) : !overdue.data?.length ? (
-              <div className="py-6 text-center">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">All departments on schedule</span>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {overdue.data.map((dept) => (
-                  <div
-                    key={dept.department_code}
-                    className="flex items-center justify-between p-3 rounded-lg bg-red-50/50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30"
-                  >
-                    <div>
-                      <span className="text-xs font-bold text-slate-900 dark:text-slate-100">{dept.department_code}</span>
-                      <span className="text-[10px] text-slate-400 ml-2">{dept.department_name}</span>
-                    </div>
-                    <Badge variant="danger" size="sm">
-                      {dept.overdue_count} overdue
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      {/* ── 6. QUICK NAVIGATION TILES ──────────────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+        <Link
+          to="/assets"
+          className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-blue-400 transition-all text-center space-y-1 shadow-sm"
+        >
+          <Server className="w-4 h-4 mx-auto text-blue-600" />
+          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Assets</p>
+          <span className="text-[10px] text-slate-400 block">Inventory & Telemetry</span>
+        </Link>
+        <Link
+          to="/maintenance"
+          className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-amber-400 transition-all text-center space-y-1 shadow-sm"
+        >
+          <Wrench className="w-4 h-4 mx-auto text-amber-600" />
+          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Maintenance</p>
+          <span className="text-[10px] text-slate-400 block">Overdue & Schedules</span>
+        </Link>
+        <Link
+          to="/blocks"
+          className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-purple-400 transition-all text-center space-y-1 shadow-sm"
+        >
+          <Boxes className="w-4 h-4 mx-auto text-purple-600" />
+          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Blocks</p>
+          <span className="text-[10px] text-slate-400 block">Possession Orders</span>
+        </Link>
+        <Link
+          to="/defects"
+          className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-red-400 transition-all text-center space-y-1 shadow-sm"
+        >
+          <AlertTriangle className="w-4 h-4 mx-auto text-red-600" />
+          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Defects</p>
+          <span className="text-[10px] text-slate-400 block">Track Flaws & Relays</span>
+        </Link>
+        <Link
+          to="/trains"
+          className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-blue-400 transition-all text-center space-y-1 shadow-sm"
+        >
+          <Train className="w-4 h-4 mx-auto text-blue-600" />
+          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Timetable</p>
+          <span className="text-[10px] text-slate-400 block">Passenger & Freight</span>
+        </Link>
+        <Link
+          to="/ai/planner"
+          className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-emerald-400 transition-all text-center space-y-1 shadow-sm"
+        >
+          <Cpu className="w-4 h-4 mx-auto text-emerald-600" />
+          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">AI Planner</p>
+          <span className="text-[10px] text-slate-400 block">Multi-Horizon Solver</span>
+        </Link>
       </div>
-
-
-      {/* ── AI High-Risk Assets Widget ───────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-500" />
-              <CardTitle>Top High-Risk Infrastructure Assets</CardTitle>
-            </div>
-            <Link to="/ai/risk" className="text-xs text-blue-500 hover:underline flex items-center gap-1 font-medium">
-              View AI Risk Matrix <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {topHighRisk.isLoading ? (
-            <div className="space-y-3 py-2">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 rounded-lg" />
-              ))}
-            </div>
-          ) : topHighRisk.error ? (
-            <p className="text-sm text-red-500 py-4 text-center">Failed to load high-risk assets</p>
-          ) : !topHighRisk.data?.data?.items?.length ? (
-            <div className="py-6 text-center text-slate-500 text-xs italic">
-              No critical infrastructure risks identified.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-              {topHighRisk.data.data.items.slice(0, 5).map((item) => (
-                <Link
-                  key={item.id}
-                  to={`/assets/${item.asset_id}`}
-                  className="p-3 rounded-lg border border-slate-700/60 bg-slate-800/40 hover:bg-slate-800/80 hover:border-slate-600 transition-all flex flex-col justify-between"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-mono font-bold text-xs text-blue-400">{item.asset_code}</span>
-                    <span
-                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded font-mono uppercase ${
-                        item.risk_level === 'CRITICAL'
-                          ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                          : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                      }`}
-                    >
-                      {item.risk_level}
-                    </span>
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-slate-200 truncate">{item.asset_name}</div>
-                    <div className="text-[10px] text-slate-400 font-mono mt-0.5">{item.asset_type} • {item.department}</div>
-                  </div>
-                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-700/40 text-[11px] font-mono">
-                    <span className="text-slate-400">Score: <strong className="text-slate-100">{item.risk_score.toFixed(1)}</strong></span>
-                    <span className="text-amber-400 font-bold">{Math.round(item.failure_probability * 100)}% risk</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ── Quick Actions ────────────────────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Link
-              to="/assets"
-              className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-blue-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all flex items-start justify-between group"
-            >
-              <div className="flex items-start gap-3">
-                <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-500">
-                  <Server className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">Asset Management</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">View inventory & health tracking</p>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
-            </Link>
-
-            <Link
-              to="/maintenance"
-              className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-amber-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all flex items-start justify-between group"
-            >
-              <div className="flex items-start gap-3">
-                <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-500">
-                  <Wrench className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">Maintenance Hub</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Overdue, critical & upcoming</p>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-amber-500 transition-colors" />
-            </Link>
-
-            <Link
-              to="/blocks"
-              className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-purple-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all flex items-start justify-between group"
-            >
-              <div className="flex items-start gap-3">
-                <div className="p-2.5 rounded-lg bg-purple-500/10 text-purple-500">
-                  <Boxes className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">Block Operations</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Requests, approvals & conflicts</p>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-purple-500 transition-colors" />
-            </Link>
-
-            <Link
-              to="/defects"
-              className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-red-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all flex items-start justify-between group"
-            >
-              <div className="flex items-start gap-3">
-                <div className="p-2.5 rounded-lg bg-red-500/10 text-red-500">
-                  <AlertTriangle className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">Defect Tracker</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Severity prioritization</p>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-red-500 transition-colors" />
-            </Link>
-
-            <Link
-              to="/trains"
-              className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all flex items-start justify-between group"
-            >
-              <div className="flex items-start gap-3">
-                <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-500">
-                  <Train className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">Train Operations</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Timetable & goods forecast</p>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-500 transition-colors" />
-            </Link>
-
-            <Link
-              to="/planner"
-              className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all flex items-start justify-between group"
-            >
-              <div className="flex items-start gap-3">
-                <div className="p-2.5 rounded-lg bg-indigo-500/10 text-indigo-500">
-                  <Cpu className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">AI Block Planner</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Multi-department optimization</p>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

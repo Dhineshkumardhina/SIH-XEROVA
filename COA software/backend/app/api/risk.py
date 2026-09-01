@@ -36,8 +36,10 @@ ALLOWED_PREDICT_ROLES = [
 
 
 def verify_predict_permission(current_user: User = Depends(get_current_user)) -> User:
-    role_code = (current_user.role.code if current_user.role else "ANALYST").upper()
-    if role_code not in ALLOWED_PREDICT_ROLES:
+    user_roles = {r.code.upper() for r in getattr(current_user, "roles", []) if hasattr(r, "code")}
+    if "SUPER_ADMIN" in user_roles or "CONTROL_OFFICER" in user_roles:
+        return current_user
+    if user_roles and not user_roles.intersection(ALLOWED_PREDICT_ROLES):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User does not have permission to trigger AI Risk Predictions."

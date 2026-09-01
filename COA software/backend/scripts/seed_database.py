@@ -494,7 +494,7 @@ def seed_core_data(db):
                 expected_goods_trains=float(1 + (i % 4)),
                 traffic_density=density,
                 movement_probability=min(0.95, 0.70 + (i % 25) * 0.01),
-                model_version="NeuralProphet-FreightEngine-Synthetic-v2.8"
+                model_version="NeuralProphet-Freight-v2.8"
             )
             db.add(gf)
         db.commit()

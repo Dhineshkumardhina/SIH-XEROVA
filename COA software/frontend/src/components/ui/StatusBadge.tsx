@@ -19,20 +19,24 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'sm', c
     case 'ACTIVE':
     case 'RESOLVED':
     case 'NORMAL':
+    case 'AVAILABLE':
       variant = 'success'
       break
 
     case 'HIGH':
+    case 'DEGRADED':
     case 'UNDER_REVIEW':
     case 'SCHEDULED':
     case 'PENDING_APPROVAL':
     case 'WARNING':
     case 'CAUTION':
+    case 'PENDING':
       variant = 'warning'
       break
 
     case 'CRITICAL':
     case 'OVERDUE':
+    case 'OUT_OF_SERVICE':
     case 'REJECTED':
     case 'FAILED':
     case 'CONFLICT':
@@ -53,7 +57,8 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'sm', c
       variant = 'purple'
       break
 
-    case 'PENDING':
+    case 'LOW':
+    case 'MEDIUM':
     case 'DRAFT':
     case 'INACTIVE':
     case 'CANCELLED':

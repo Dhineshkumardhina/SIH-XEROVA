@@ -1,0 +1,8 @@
+{
+  "description": "High goods traffic requiring long maintenance blocks",
+  "assets": [{"id": 1, "department_id": 3, "status": "ACTIVE"}],
+  "tasks": [{"id": 1, "asset_id": 1, "priority": "HIGH", "duration_minutes": 180, "required_window_start": "2026-09-04T06:00:00Z", "required_window_end": "2026-09-04T20:00:00Z"}],
+  "trains": [{"id": 10, "type": "GOODS", "schedule": [{"corridor_id": 2, "start": "2026-09-04T08:00:00Z", "end": "2026-09-04T18:00:00Z"}]}],
+  "corridors": [{"id": 2, "capacity": 2}],
+  "parameters": {"window_start": "2026-09-01T00:00:00Z", "window_end": "2026-09-07T23:59:59Z"}
+}

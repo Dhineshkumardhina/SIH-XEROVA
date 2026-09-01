@@ -68,6 +68,10 @@ class Asset(Base, TimestampMixin):
     __table_args__ = (
         UniqueConstraint("external_source", "external_id", name="uq_asset_external_source_id"),
         Index("ix_assets_composite_dept_corridor", "department_id", "corridor_id"),
+        Index("ix_assets_department_id", "department_id"),
+        Index("ix_assets_station_id", "station_id"),
+        Index("ix_assets_corridor_id", "corridor_id"),
+        Index("ix_assets_status", "status"),
         CheckConstraint("criticality_score >= 0 AND criticality_score <= 100", name="chk_asset_criticality_range"),
         CheckConstraint("health_score >= 0 AND health_score <= 100", name="chk_asset_health_range"),
     )

@@ -45,6 +45,7 @@ echo "Executing database migrations (alembic upgrade head)..."
 alembic upgrade head || {
     echo "WARNING: Alembic migration encountered an issue. Initializing tables via SQLAlchemy metadata..."
     python -c "from app.database.session import engine; from app.models.domain import Base; Base.metadata.create_all(bind=engine)"
+    alembic stamp head || true
 }
 
 echo "Database schema ready."

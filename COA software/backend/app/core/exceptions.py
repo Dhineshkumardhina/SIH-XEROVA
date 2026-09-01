@@ -1,8 +1,11 @@
+import logging
 from typing import Optional, Any, Dict
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+logger = logging.getLogger("railopt.exceptions")
 
 class AppException(Exception):
     def __init__(self, code: str, message: str, status_code: int = status.HTTP_400_BAD_REQUEST, data: Optional[Any] = None):
@@ -69,48 +72,77 @@ class BlockApprovalForbiddenError(AppException):
             status_code=status.HTTP_403_FORBIDDEN
         )
 
+class NoFeasiblePlanError(AppException):
+    def __init__(self, message: str = "No feasible block window exists for the selected tasks and corridor constraints"):
+        super().__init__(
+            code="NO_FEASIBLE_PLAN",
+            message=message,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
+        )
 
-def create_error_response(code: str, message: str, status_code: int, data: Optional[Any] = None) -> JSONResponse:
-    error_payload = {
+
+def create_error_response(
+    code: str,
+    message: str,
+    status_code: int,
+    data: Optional[Any] = None,
+    request_id: Optional[str] = None
+) -> JSONResponse:
+    error_payload: Dict[str, Any] = {
         "code": code,
         "message": message
     }
     if data:
         error_payload["details"] = data
+    if request_id:
+        error_payload["request_id"] = request_id
 
-    return JSONResponse(
-        status_code=status_code,
-        content={
-            "success": False,
-            "error": error_payload,
-            "detail": error_payload  # Dual detail key for compatibility with existing tests
-        }
-    )
+    content = {
+        "success": False,
+        "error": error_payload,
+        "detail": error_payload  # Dual detail key for compatibility with existing tests
+    }
+
+    return JSONResponse(status_code=status_code, content=content)
 
 async def app_exception_handler(request: Request, exc: AppException):
+    req_id = getattr(request.state, "request_id", None)
     return create_error_response(
         code=exc.code,
         message=exc.message,
         status_code=exc.status_code,
-        data=exc.data
+        data=exc.data,
+        request_id=req_id
     )
 
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    # Handle dict detail if provided
+    req_id = getattr(request.state, "request_id", None)
     if isinstance(exc.detail, dict):
         code = exc.detail.get("code") or ("UNAUTHORIZED" if exc.status_code == 401 else "FORBIDDEN" if exc.status_code == 403 else "HTTP_ERROR")
         message = exc.detail.get("message") or str(exc.detail)
-        return create_error_response(code=code, message=message, status_code=exc.status_code)
+        return create_error_response(code=code, message=message, status_code=exc.status_code, request_id=req_id)
     
     code = "UNAUTHORIZED" if exc.status_code == 401 else "FORBIDDEN" if exc.status_code == 403 else "NOT_FOUND" if exc.status_code == 404 else "HTTP_ERROR"
-    return create_error_response(code=code, message=str(exc.detail), status_code=exc.status_code)
+    return create_error_response(code=code, message=str(exc.detail), status_code=exc.status_code, request_id=req_id)
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    req_id = getattr(request.state, "request_id", None)
     errors = exc.errors()
     message = "; ".join([f"{'.'.join(str(loc) for loc in err['loc'])}: {err['msg']}" for err in errors])
     return create_error_response(
         code="VALIDATION_ERROR",
         message=f"Request validation failed: {message}",
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        data=errors
+        data=errors,
+        request_id=req_id
+    )
+
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    req_id = getattr(request.state, "request_id", "req_unknown")
+    logger.error(f"request_id={req_id} service=railopt-backend event=unhandled_exception error={str(exc)}", exc_info=True)
+    return create_error_response(
+        code="INTERNAL_SERVER_ERROR",
+        message=f"An unexpected internal error occurred. Please retry. (Reference ID: {req_id})",
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        request_id=req_id
     )

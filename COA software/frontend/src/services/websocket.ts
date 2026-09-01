@@ -144,6 +144,11 @@ class WebSocketService {
   private scheduleReconnect(): void {
     if (this.reconnectTimeoutId) return
 
+    if (this.reconnectAttempts >= 10) {
+      useOperationsStore.getState().setConnectionStatus('DISCONNECTED')
+      return
+    }
+
     // Exponential backoff: 1s, 2s, 4s, 8s, 16s, max 30s
     const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), this.maxReconnectInterval)
     this.reconnectAttempts++

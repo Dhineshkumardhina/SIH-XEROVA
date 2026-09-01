@@ -1,4 +1,4 @@
-import React from 'react'
+ import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import AppLayout from '../components/layout/AppLayout'
 import ProtectedRoute from '../auth/ProtectedRoute'
@@ -41,6 +41,9 @@ import AdminPage from '../pages/Admin'
 import LiveOperationsPage from '../pages/LiveOperations'
 import NotificationsPage from '../pages/NotificationsPage'
 import AuditPage from '../pages/AuditPage'
+import ArchitecturePage from '../pages/ArchitecturePage'
+import OptimizationResultPage from '../pages/planner/OptimizationResultPage'
+import DemoPresentationPage from '../pages/DemoPresentationPage'
 import NotFoundPage from '../pages/NotFound'
 import ModulePlaceholder from '../pages/ModulePlaceholder'
 
@@ -60,6 +63,7 @@ export const AppRoutes: React.FC = () => {
       >
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/demo" element={<DemoPresentationPage />} />
 
         {/* Assets Hierarchy */}
         <Route path="/assets" element={<AssetsPage />} />
@@ -140,6 +144,7 @@ export const AppRoutes: React.FC = () => {
         {/* Planner Hierarchy */}
         <Route path="/planner" element={<AIPlannerPage subModule="ai" />} />
         <Route path="/planner/ai" element={<AIPlannerPage subModule="ai" />} />
+        <Route path="/planner/optimization-result" element={<OptimizationResultPage />} />
         <Route path="/planner/daily" element={<AIPlannerPage subModule="daily" />} />
         <Route path="/planner/weekly" element={<AIPlannerPage subModule="weekly" />} />
         <Route path="/planner/monthly" element={<AIPlannerPage subModule="monthly" />} />
@@ -173,6 +178,9 @@ export const AppRoutes: React.FC = () => {
             </ProtectedRoute>
           }
         />
+
+        {/* System Architecture Blueprint */}
+        <Route path="/architecture" element={<ArchitecturePage />} />
 
         {/* Admin Hierarchy */}
         <Route

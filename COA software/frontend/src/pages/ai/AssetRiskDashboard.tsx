@@ -237,9 +237,9 @@ export const AssetRiskDashboard: React.FC = () => {
     if (!search) return true
     const q = search.toLowerCase()
     return (
-      a.asset_code?.toLowerCase().includes(q) ||
-      a.asset_name?.toLowerCase().includes(q) ||
-      a.asset_type?.toLowerCase().includes(q)
+      (a.asset_code || '').toLowerCase().includes(q) ||
+      (a.asset_name || '').toLowerCase().includes(q) ||
+      (a.asset_type || '').toLowerCase().includes(q)
     )
   })
 

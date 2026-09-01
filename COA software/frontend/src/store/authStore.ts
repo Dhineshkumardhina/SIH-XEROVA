@@ -23,6 +23,15 @@ const STORAGE_KEY_TOKEN = 'railopt_access_token'
 const STORAGE_KEY_REFRESH = 'railopt_refresh_token'
 const STORAGE_KEY_USER = 'railopt_user'
 
+const sanitizeUser = (user: any): User | null => {
+  if (!user || typeof user !== 'object') return null
+  return {
+    ...user,
+    roles: Array.isArray(user.roles) ? user.roles : [],
+    permissions: Array.isArray(user.permissions) ? user.permissions : [],
+  }
+}
+
 export const useAuthStore = create<AuthState>((set, get) => {
   // Initialize from storage if available
   const savedToken = localStorage.getItem(STORAGE_KEY_TOKEN)
@@ -30,7 +39,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
   let savedUser: User | null = null
   try {
     const raw = localStorage.getItem(STORAGE_KEY_USER)
-    if (raw) savedUser = JSON.parse(raw)
+    if (raw) savedUser = sanitizeUser(JSON.parse(raw))
   } catch {
     savedUser = null
   }
@@ -49,14 +58,15 @@ export const useAuthStore = create<AuthState>((set, get) => {
         const response = await authService.login(identifier, password)
         if (response.success && response.data) {
           const { access_token, refresh_token, user } = response.data
+          const sanitizedUser = sanitizeUser(user)
           localStorage.setItem(STORAGE_KEY_TOKEN, access_token)
           localStorage.setItem(STORAGE_KEY_REFRESH, refresh_token)
-          localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user))
+          localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(sanitizedUser))
 
           set({
             accessToken: access_token,
             refreshToken: refresh_token,
-            currentUser: user,
+            currentUser: sanitizedUser,
             isAuthenticated: true,
             isLoading: false,
             error: null,
@@ -113,14 +123,15 @@ export const useAuthStore = create<AuthState>((set, get) => {
         const response = await authService.refresh(currentRefresh)
         if (response.success && response.data) {
           const { access_token, refresh_token, user } = response.data
+          const sanitizedUser = sanitizeUser(user)
           localStorage.setItem(STORAGE_KEY_TOKEN, access_token)
           localStorage.setItem(STORAGE_KEY_REFRESH, refresh_token)
-          localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user))
+          localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(sanitizedUser))
 
           set({
             accessToken: access_token,
             refreshToken: refresh_token,
-            currentUser: user,
+            currentUser: sanitizedUser,
             isAuthenticated: true,
           })
           return true
@@ -137,8 +148,9 @@ export const useAuthStore = create<AuthState>((set, get) => {
       try {
         const res = await authService.getMe()
         if (res.success && res.data) {
-          localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(res.data))
-          set({ currentUser: res.data })
+          const sanitizedUser = sanitizeUser(res.data)
+          localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(sanitizedUser))
+          set({ currentUser: sanitizedUser })
         }
       } catch {
         // Token might be invalid
@@ -148,22 +160,26 @@ export const useAuthStore = create<AuthState>((set, get) => {
     hasRole: (roleCode: string) => {
       const user = get().currentUser
       if (!user) return false
-      if (user.roles.includes('SUPER_ADMIN')) return true
-      return user.roles.includes(roleCode)
+      const roles = Array.isArray(user.roles) ? user.roles : []
+      if (roles.includes('SUPER_ADMIN')) return true
+      return roles.includes(roleCode)
     },
 
     hasAnyRole: (roleCodes: string[]) => {
       const user = get().currentUser
       if (!user) return false
-      if (user.roles.includes('SUPER_ADMIN')) return true
-      return user.roles.some((r) => roleCodes.includes(r))
+      const roles = Array.isArray(user.roles) ? user.roles : []
+      if (roles.includes('SUPER_ADMIN')) return true
+      return roles.some((r) => Array.isArray(roleCodes) && roleCodes.includes(r))
     },
 
     hasPermission: (permCode: string) => {
       const user = get().currentUser
       if (!user) return false
-      if (user.roles.includes('SUPER_ADMIN')) return true
-      return user.permissions.includes(permCode)
+      const roles = Array.isArray(user.roles) ? user.roles : []
+      if (roles.includes('SUPER_ADMIN')) return true
+      const permissions = Array.isArray(user.permissions) ? user.permissions : []
+      return permissions.includes(permCode)
     },
 
     clearError: () => set({ error: null }),

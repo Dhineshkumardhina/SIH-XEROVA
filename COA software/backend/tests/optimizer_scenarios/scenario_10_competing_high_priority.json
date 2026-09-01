@@ -1,0 +1,14 @@
+{
+  "description": "Competing high‑priority tasks where multiple critical jobs overlap and must be prioritized correctly",
+  "assets": [
+    {"id": 1, "department_id": 1, "status": "ACTIVE"},
+    {"id": 2, "department_id": 2, "status": "ACTIVE"}
+  ],
+  "tasks": [
+    {"id": 1, "asset_id": 1, "priority": "CRITICAL", "duration_minutes": 180, "required_window_start": "2026-09-10T08:00:00Z", "required_window_end": "2026-09-10T20:00:00Z"},
+    {"id": 2, "asset_id": 2, "priority": "HIGH", "duration_minutes": 120, "required_window_start": "2026-09-10T09:00:00Z", "required_window_end": "2026-09-10T19:00:00Z"}
+  ],
+  "trains": [],
+  "corridors": [{"id": 1, "capacity": 2}],
+  "parameters": {"window_start": "2026-09-10T00:00:00Z", "window_end": "2026-09-10T23:59:59Z"}
+}

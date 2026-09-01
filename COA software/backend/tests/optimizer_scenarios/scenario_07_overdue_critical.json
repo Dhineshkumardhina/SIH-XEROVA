@@ -1,0 +1,18 @@
+{
+  "description": "Overdue critical maintenance tasks that must be prioritized",
+  "assets": [{"id": 1, "department_id": 1, "status": "ACTIVE"}],
+  "tasks": [
+    {
+      "id": 1,
+      "asset_id": 1,
+      "priority": "CRITICAL",
+      "duration_minutes": 180,
+      "required_window_start": "2026-08-30T00:00:00Z",
+      "required_window_end": "2026-09-07T23:59:59Z",
+      "due_at": "2026-08-28T12:00:00Z"
+    }
+  ],
+  "trains": [],
+  "corridors": [{"id": 1, "capacity": 3}],
+  "parameters": {"window_start": "2026-09-01T00:00:00Z", "window_end": "2026-09-07T23:59:59Z"}
+}

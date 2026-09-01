@@ -58,6 +58,7 @@ def build_user_summary(user: User) -> UserSummary:
         username=user.username,
         full_name=user.full_name,
         roles=[r.code for r in user.roles],
+        permissions=user.permissions,
         department=dept_summary,
         is_active=user.is_active
     )

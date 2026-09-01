@@ -1,0 +1,11 @@
+{
+  "description": "Isolation conflict where tasks require isolation but corridor capacity forces conflict",
+  "assets": [{"id": 1, "department_id": 1, "status": "ACTIVE"}],
+  "tasks": [
+    {"id": 1, "asset_id": 1, "priority": "HIGH", "duration_minutes": 120, "isolation_required": true, "required_window_start": "2026-09-08T08:00:00Z", "required_window_end": "2026-09-08T12:00:00Z"},
+    {"id": 2, "asset_id": 1, "priority": "MEDIUM", "duration_minutes": 60, "isolation_required": false, "required_window_start": "2026-09-08T09:00:00Z", "required_window_end": "2026-09-08T11:00:00Z"}
+  ],
+  "trains": [],
+  "corridors": [{"id": 1, "capacity": 1}],
+  "parameters": {"window_start": "2026-09-08T00:00:00Z", "window_end": "2026-09-08T23:59:59Z"}
+}

@@ -121,6 +121,15 @@ class ReportService:
             if d_obj:
                 dept_id = d_obj.id
 
+        # Resolve corridor ID if code was passed
+        resolved_corridor_id = None
+        if corridor_id:
+            c_obj = db.query(Corridor).filter(
+                or_(Corridor.code == corridor_id, Corridor.id == corridor_id)
+            ).first()
+            if c_obj:
+                resolved_corridor_id = c_obj.id
+
         # Compile data based on report type
         summary_metrics, detailed_data = cls._compile_report_data(
             db=db,
@@ -128,7 +137,7 @@ class ReportService:
             start_date=start_date,
             end_date=end_date,
             department_id=dept_id,
-            corridor_id=corridor_id,
+            corridor_id=resolved_corridor_id,
             options=options
         )
 
@@ -140,7 +149,7 @@ class ReportService:
             start_date=start_date,
             end_date=end_date,
             department_id=dept_id,
-            corridor_id=corridor_id,
+            corridor_id=resolved_corridor_id,
             parameters={
                 "department": department,
                 "corridor_id": corridor_id,

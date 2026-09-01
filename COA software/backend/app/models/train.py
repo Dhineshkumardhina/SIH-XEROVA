@@ -40,6 +40,9 @@ class TrainStatus(str, enum.Enum):
 
 class Train(Base, TimestampMixin):
     __tablename__ = "trains"
+    __table_args__ = (
+        Index("ix_trains_corridor_id", "corridor_id"),
+    )
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     train_number = Column(String(32), unique=True, nullable=False, index=True)

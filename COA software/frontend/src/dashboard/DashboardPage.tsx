@@ -18,9 +18,12 @@ import {
   BarChart,
   Bar,
 } from 'recharts'
+// import { useLocation } from 'react-router-dom'; // unused
 import { cn, priorityColor, timeAgo } from '../shared/utils'
 import { mockAvailabilityTrend, mockDeptBreakdown } from '../shared/mockData'
 import { useDashboardStore } from '../shared/store'
+import DemoWizard from '../components/DemoWizard'
+import StartDemoButton from '../components/StartDemoButton'
 
 // ── Stat Card ───────────────────────────────────────────────────────
 
@@ -38,14 +41,7 @@ function StatCard({
   color: string
 }) {
   return (
-    <div className="group relative overflow-hidden rounded-xl bg-slate-800/50 border border-slate-700/50 p-5 hover:border-slate-600/60 transition-all duration-300 hover:shadow-lg hover:shadow-black/20">
-      {/* Gradient glow */}
-      <div
-        className={cn(
-          'absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-20 group-hover:opacity-30 transition-opacity',
-          color
-        )}
-      />
+    <div className="group relative overflow-hidden rounded-xl bg-white border border-gray-200 p-5">
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">
@@ -60,11 +56,10 @@ function StatCard({
             <Icon className={cn('w-4 h-4', color.replace('bg-', 'text-'))} />
           </div>
         </div>
-        <p className="text-3xl font-bold text-white tracking-tight">{value}</p>
+        <p className="text-3xl font-bold text-gray-800 tracking-tight">{value}</p>
         {trend && (
-          <div className="flex items-center gap-1 mt-2">
-            <TrendingUp className="w-3 h-3 text-emerald-400" />
-            <span className="text-xs text-emerald-400">{trend}</span>
+          <div className="flex items-center gap-1 mt-2 text-gray-600 text-xs">
+            <TrendingUp className="w-3 h-3" /> {trend}
           </div>
         )}
       </div>
@@ -94,6 +89,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+        <DemoWizard />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -104,11 +100,12 @@ export default function DashboardPage() {
             RAILOPT-AI Command Center — Real-time overview
           </p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs font-medium text-emerald-400">System Online</span>
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-50 border border-green-200">
+          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-xs font-medium text-green-700">System Online</span>
         </div>
       </div>
+        <StartDemoButton />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

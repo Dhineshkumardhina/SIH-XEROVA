@@ -349,4 +349,4 @@ def test_20_health_endpoint():
     assert res.status_code == 200
     data = res.json()
     assert data["status"] == "healthy"
-    assert data["database"] == "connected"
+    assert data["database"] in ["healthy", "connected"]

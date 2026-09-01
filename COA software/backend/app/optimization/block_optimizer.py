@@ -1,6 +1,6 @@
 import time
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from ortools.sat.python import cp_model
@@ -27,8 +27,23 @@ from app.core.exceptions import ResourceNotFoundError
 class BlockOptimizer:
     """
     Automatic Railway Maintenance Block Optimizer powered by Google OR-Tools CP-SAT.
-    Integrates Train Impact, Block Conflict, and Multi-Department Bundling.
     """
+
+    @classmethod
+    def _validate_block_safety(cls, block: OptimizedBlock, cfg: OptimizationConfig) -> Tuple[bool, str]:
+        """
+        Mandatory post-optimization safety validation pass (Step 10).
+        Verifies that solver generated blocks do not violate any hard constraints.
+        """
+        if block.duration_minutes > cfg.max_block_duration_minutes:
+            return False, f"Block duration {block.duration_minutes}m exceeds maximum allowed {cfg.max_block_duration_minutes}m"
+        if block.start_time >= block.end_time:
+            return False, "Block start_time must be strictly earlier than end_time"
+        if not block.corridor_id:
+            return False, "Block corridor_id cannot be null or empty"
+        if block.duration_minutes <= 0:
+            return False, "Block duration must be positive"
+        return True, "Valid"
 
     @classmethod
     def _map_priority_weight(cls, priority: str) -> float:
@@ -285,7 +300,13 @@ class BlockOptimizer:
                         conflicts=c.conflicts,
                         explanation=expl
                     )
-                    optimized_blocks.append(opt_block)
+
+                    # Post-optimization hard constraint validation pass
+                    is_safe, safety_reason = cls._validate_block_safety(opt_block, cfg)
+                    if is_safe:
+                        optimized_blocks.append(opt_block)
+                    else:
+                        print(f"SECURITY ALERT: Discarded block failing post-solver validation: {safety_reason}")
 
         # Identify Unscheduled Tasks
         for t in tasks:

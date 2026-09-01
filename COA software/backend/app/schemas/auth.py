@@ -29,6 +29,7 @@ class UserSummary(BaseModel):
     username: str
     full_name: str
     roles: List[str] = []
+    permissions: List[str] = []
     department: Optional[DepartmentSummary] = None
     is_active: bool = True
 

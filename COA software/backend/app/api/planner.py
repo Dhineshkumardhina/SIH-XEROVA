@@ -22,11 +22,13 @@ router = APIRouter(prefix="/planner", tags=["Multi-Horizon Planner"])
 
 # ── Daily Planner Endpoints ──────────────────────────────────────────────────
 
+from app.api.dependencies import get_db, require_authenticated_user, require_permission, require_role
+
 @router.post("/daily/generate", summary="Generate 24-hour Daily Maintenance Block Plan")
 def generate_daily_plan(
     payload: DailyPlanGenerateRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_authenticated_user)
+    current_user: User = Depends(require_role("SUPER_ADMIN", "CONTROL_OFFICER", "BLOCK_PLANNER"))
 ):
     data = multi_horizon_planner.generate_daily_plan(
         db=db,

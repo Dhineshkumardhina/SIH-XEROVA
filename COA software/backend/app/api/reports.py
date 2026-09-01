@@ -19,11 +19,13 @@ from app.services.report_service import report_service
 router = APIRouter(prefix="/reports", tags=["Operational Reports & Export"])
 
 
+from app.api.dependencies import get_db, require_authenticated_user, require_permission, require_role
+
 @router.post("/generate", response_model=ApiResponse[ReportDetailResponse], status_code=status.HTTP_201_CREATED, summary="Generate an operational report")
 def generate_report(
     payload: ReportGenerateRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_authenticated_user)
+    current_user: User = Depends(require_role("SUPER_ADMIN", "CONTROL_OFFICER", "BLOCK_PLANNER", "ENGINEERING_OFFICER", "SIGNAL_TELECOM_OFFICER", "TRACTION_OFFICER", "MAINTENANCE_SUPERVISOR", "ANALYST"))
 ):
     report = report_service.generate_report(
         db=db,

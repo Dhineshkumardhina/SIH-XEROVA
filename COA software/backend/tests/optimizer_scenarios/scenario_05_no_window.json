@@ -1,0 +1,15 @@
+{
+  "description": "No feasible window scenario where maintenance tasks cannot fit within any allowed time window",
+  "assets": [{"id": 1, "department_id": 1, "status": "ACTIVE"}],
+  "tasks": [{
+    "id": 1,
+    "asset_id": 1,
+    "priority": "HIGH",
+    "duration_minutes": 720,
+    "required_window_start": "2026-09-05T08:00:00Z",
+    "required_window_end": "2026-09-05T20:00:00Z"
+  }],
+  "trains": [],
+  "corridors": [{"id": 1, "capacity": 5}],
+  "parameters": {"window_start": "2026-09-05T00:00:00Z", "window_end": "2026-09-05T23:59:59Z"}
+}

@@ -1,0 +1,17 @@
+{
+  "description": "Multiple corridors scenario where blocks may span several corridors",
+  "assets": [
+    {"id": 1, "department_id": 1, "corridor_id": 1, "status": "ACTIVE"},
+    {"id": 2, "department_id": 2, "corridor_id": 2, "status": "ACTIVE"}
+  ],
+  "tasks": [
+    {"id": 1, "asset_id": 1, "priority": "HIGH", "duration_minutes": 120, "required_window_start": "2026-09-06T08:00:00Z", "required_window_end": "2026-09-06T20:00:00Z"},
+    {"id": 2, "asset_id": 2, "priority": "MEDIUM", "duration_minutes": 90, "required_window_start": "2026-09-06T09:00:00Z", "required_window_end": "2026-09-06T18:00:00Z"}
+  ],
+  "trains": [],
+  "corridors": [
+    {"id": 1, "capacity": 2},
+    {"id": 2, "capacity": 2}
+  ],
+  "parameters": {"window_start": "2026-09-06T00:00:00Z", "window_end": "2026-09-06T23:59:59Z"}
+}
