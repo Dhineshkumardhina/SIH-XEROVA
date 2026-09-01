@@ -22,10 +22,10 @@ interface UIState {
 const THEME_STORAGE_KEY = 'railopt_theme'
 
 const getInitialTheme = (): ThemeMode => {
-  if (typeof window === 'undefined') return 'dark'
+  if (typeof window === 'undefined') return 'light'
   const saved = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null
   if (saved === 'light' || saved === 'dark') return saved
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  return 'light'
 }
 
 export const useUIStore = create<UIState>((set) => {

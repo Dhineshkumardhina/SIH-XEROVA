@@ -28,6 +28,8 @@ import TrainOperationsDashboard from '../pages/trains/TrainOperationsDashboard'
 import TrainList from '../pages/trains/TrainList'
 import TrainDetail from '../pages/trains/TrainDetail'
 import CorridorsPage from '../pages/Corridors'
+import CorridorMapPage from '../pages/corridors/CorridorMapPage'
+import CorridorDetailPage from '../pages/corridors/CorridorDetailPage'
 import BlocksPage from '../pages/Blocks'
 import BlockRequestDetail from '../pages/blocks/BlockRequestDetail'
 import AIPlannerPage from '../pages/ai/AIPlannerPage'
@@ -45,7 +47,6 @@ import ArchitecturePage from '../pages/ArchitecturePage'
 import OptimizationResultPage from '../pages/planner/OptimizationResultPage'
 import DemoPresentationPage from '../pages/DemoPresentationPage'
 import NotFoundPage from '../pages/NotFound'
-import ModulePlaceholder from '../pages/ModulePlaceholder'
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -96,30 +97,8 @@ export const AppRoutes: React.FC = () => {
 
         {/* Corridors Hierarchy */}
         <Route path="/corridors" element={<CorridorsPage />} />
-        <Route
-          path="/corridors/map"
-          element={
-            <ModulePlaceholder
-              title="Interactive Corridor Topology Map"
-              description="Schematic GIS track geometry with signal blocks, switch layouts, and kilometer post markers."
-              phase="Phase 9 (GIS Corridor Map)"
-              phaseNumber={9}
-              category="Corridors"
-            />
-          }
-        />
-        <Route
-          path="/corridors/:corridorId"
-          element={
-            <ModulePlaceholder
-              title="Corridor Section Detail"
-              description="Section availability percentage, active speed restrictions, and concurrent possessions."
-              phase="Phase 9 (Corridors Deep Dive)"
-              phaseNumber={9}
-              category="Corridors"
-            />
-          }
-        />
+        <Route path="/corridors/map" element={<CorridorMapPage />} />
+        <Route path="/corridors/:corridorId" element={<CorridorDetailPage />} />
 
         {/* Operations & Real-Time Feed */}
         <Route path="/operations" element={<LiveOperationsPage />} />
@@ -136,10 +115,16 @@ export const AppRoutes: React.FC = () => {
 
         {/* AI Hierarchy */}
         <Route path="/ai" element={<AIPlannerPage subModule="ai" />} />
+        <Route path="/ai/planner" element={<AIPlannerPage subModule="ai" />} />
         <Route path="/ai/priority" element={<AIPriorityDashboard />} />
         <Route path="/ai/priority/:taskId" element={<AIPriorityDetail />} />
         <Route path="/ai/risk" element={<AssetRiskDashboard />} />
         <Route path="/ai/recommendations" element={<AIPlannerPage subModule="recommendations" />} />
+
+        {/* Alias and List Routes */}
+        <Route path="/maintenance/list" element={<MaintenanceList />} />
+        <Route path="/assets/list" element={<AssetsPage />} />
+        <Route path="/blocks/list" element={<BlocksPage />} />
 
         {/* Planner Hierarchy */}
         <Route path="/planner" element={<AIPlannerPage subModule="ai" />} />

@@ -15,6 +15,7 @@ import { MetricCard } from '../../components/ui/MetricCard'
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { Button } from '../../components/ui/Button'
+import { RailwayCorridorMap } from '../../components/map/RailwayCorridorMap'
 import { trainService } from '../../services/trains'
 
 export const TrainOperationsDashboard: React.FC = () => {
@@ -164,15 +165,14 @@ export const TrainOperationsDashboard: React.FC = () => {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Corridor Overview</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Corridor Overview & Live GIS Map</CardTitle>
+            <Link to="/corridors/map" className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">
+              Open Full GIS Map →
+            </Link>
           </CardHeader>
-          <CardContent>
-             <div className="p-8 text-center text-slate-500 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl">
-               <MapPin className="w-8 h-8 mx-auto mb-3 text-slate-400" />
-               <p>Network map visualization placeholder</p>
-               <p className="text-xs mt-2">To view corridor density, select a specific corridor.</p>
-             </div>
+          <CardContent className="p-0 sm:p-2">
+            <RailwayCorridorMap height="360px" showControls={true} />
           </CardContent>
         </Card>
       </div>
