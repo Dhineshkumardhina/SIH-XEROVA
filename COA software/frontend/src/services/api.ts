@@ -1,5 +1,6 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import type { ApiErrorResponse } from '../types/common'
+import { getMockApiResponse } from './mockApiHandler'
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
@@ -23,7 +24,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// Response Interceptor: token refresh queue
+// Response Interceptor: token refresh queue & synthetic mock fallback
 let isRefreshing = false
 let failedQueue: Array<{
   resolve: (value?: unknown) => void
@@ -45,6 +46,31 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiErrorResponse>) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
+
+    // Gracefully handle offline / standalone demo / Vercel cloud environment when remote backend is not yet attached
+    const isNetworkError =
+      !error.response ||
+      error.code === 'ERR_NETWORK' ||
+      error.message?.includes('Network Error') ||
+      error.message?.includes('Failed to fetch') ||
+      error.response?.status === 404 ||
+      error.response?.status === 502 ||
+      error.response?.status === 503
+
+    if (isNetworkError && originalRequest?.url && !originalRequest.url.includes('/auth/login')) {
+      const mockData = getMockApiResponse(
+        originalRequest.url,
+        originalRequest.method,
+        originalRequest.data
+      )
+      return {
+        data: mockData,
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: originalRequest,
+      }
+    }
 
     if (
       error.response?.status === 401 &&
