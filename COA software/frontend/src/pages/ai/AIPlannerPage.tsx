@@ -1252,7 +1252,7 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
                         </div>
                         <div className="flex justify-between text-emerald-400">
                           <span>Utilization:</span>
-                          <span className="font-mono font-bold">{day.block_utilization_pct.toFixed(0)}%</span>
+                          <span className="font-mono font-bold">{(Number(day.block_utilization_pct) || 0).toFixed(0)}%</span>
                         </div>
                       </div>
                       <div className="pt-2 border-t border-slate-800">
@@ -1420,7 +1420,7 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
                         </div>
                         <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
                           <span>Block Utilization:</span>
-                          <span className="font-bold font-mono">{wk.utilization_pct.toFixed(1)}%</span>
+                          <span className="font-bold font-mono">{(Number(wk.utilization_pct) || 0).toFixed(1)}%</span>
                         </div>
                       </div>
                     </div>

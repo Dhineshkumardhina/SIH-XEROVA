@@ -509,10 +509,10 @@ export const SimulationPage: React.FC<SimulationPageProps> = ({ subModule = 'dig
                       {selectedTrain.train_type} | {selectedTrain.origin} → {selectedTrain.destination}
                     </span>
                     <span className="text-slate-400">
-                      Section: <strong className="text-slate-200">{selectedTrain.current_section || 'At Station'}</strong> ({selectedTrain.progress_pct.toFixed(0)}%)
+                      Section: <strong className="text-slate-200">{selectedTrain.current_section || 'At Station'}</strong> ({(Number(selectedTrain.progress_pct) || 0).toFixed(0)}%)
                     </span>
-                    {selectedTrain.delay_minutes > 0 && (
-                      <span className="text-amber-400 font-bold">Delay: +{selectedTrain.delay_minutes.toFixed(0)} min</span>
+                    {(Number(selectedTrain.delay_minutes) || 0) > 0 && (
+                      <span className="text-amber-400 font-bold">Delay: +{(Number(selectedTrain.delay_minutes) || 0).toFixed(0)} min</span>
                     )}
                   </div>
                   <button onClick={() => setSelectedTrain(null)} className="text-slate-500 hover:text-slate-300">

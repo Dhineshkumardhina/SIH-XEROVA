@@ -37,9 +37,9 @@ export const OptimizationResultPage: React.FC = () => {
   })
 
   const summary = planData?.data?.summary
-  const timeSaved = summary?.time_saved_minutes || 150
-  const trainDelay = summary?.expected_train_delay_minutes ?? 0.0
-  const optScore = summary?.optimization_score || 98.5
+  const timeSaved = Number(summary?.time_saved_minutes) || 150
+  const trainDelay = Number(summary?.expected_train_delay_minutes) || 0.0
+  const optScore = Number(summary?.optimization_score) || 98.5
   const corridorName = planData?.data?.corridor_name || 'Alpha-Bravo Main Trunk'
   const corridorId = planData?.data?.corridor_id || 'COR-A01'
 

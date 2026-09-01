@@ -849,47 +849,51 @@ export const DashboardPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {topHighRisk.data.data.items.slice(0, 6).map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                      <td className="py-2.5 px-4">
-                        <Link to={`/assets/${item.asset_id}`} className="font-mono font-bold text-blue-600 dark:text-blue-400 hover:underline">
-                          {item.asset_code}
-                        </Link>
-                        <span className="text-slate-700 dark:text-slate-300 font-medium ml-2">{item.asset_name}</span>
-                      </td>
-                      <td className="py-2.5 px-3">
-                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${getDeptBadgeClass(item.department)}`}>
-                          {item.department}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3 font-mono font-semibold text-slate-600 dark:text-slate-400">
-                        {item.corridor_id || 'COR-A01'}
-                      </td>
-                      <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-800 dark:text-slate-200">
-                        {Math.round((1 - item.failure_probability) * 100)}%
-                      </td>
-                      <td className="py-2.5 px-3 text-center">
-                        <Badge variant={item.risk_level === 'CRITICAL' ? 'danger' : item.risk_level === 'HIGH' ? 'warning' : 'info'} size="sm">
-                          {item.risk_level}
-                        </Badge>
-                      </td>
-                      <td className="py-2.5 px-3 text-center font-mono font-bold">
-                        <span className={item.risk_score >= 80 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}>
-                          {item.risk_score.toFixed(1)} / 100
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-4 text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate('/ai/planner')}
-                          className="text-[11px] h-6 px-2.5 border-slate-300 dark:border-slate-700"
-                        >
-                          Plan Block
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
+                  {topHighRisk.data.data.items.slice(0, 6).map((item, idx) => {
+                    const failProb = Number(item.failure_probability) || 0.15
+                    const score = Number(item.risk_score ?? (failProb * 100)) || 75.0
+                    return (
+                      <tr key={item.id || item.asset_id || `risk-${idx}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                        <td className="py-2.5 px-4">
+                          <Link to={`/assets/${item.asset_id}`} className="font-mono font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                            {item.asset_code}
+                          </Link>
+                          <span className="text-slate-700 dark:text-slate-300 font-medium ml-2">{item.asset_name}</span>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${getDeptBadgeClass(item.department)}`}>
+                            {item.department}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono font-semibold text-slate-600 dark:text-slate-400">
+                          {item.corridor_id || 'COR-A01'}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-800 dark:text-slate-200">
+                          {Math.round((1 - failProb) * 100)}%
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          <Badge variant={item.risk_level === 'CRITICAL' ? 'danger' : item.risk_level === 'HIGH' ? 'warning' : 'info'} size="sm">
+                            {item.risk_level}
+                          </Badge>
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-mono font-bold">
+                          <span className={score >= 80 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}>
+                            {score.toFixed(1)} / 100
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-4 text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate('/ai/planner')}
+                            className="text-[11px] h-6 px-2.5 border-slate-300 dark:border-slate-700"
+                          >
+                            Plan Block
+                          </Button>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

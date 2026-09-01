@@ -1041,7 +1041,7 @@ export const RailwayCorridorMap: React.FC<RailwayCorridorMapProps> = ({
                 <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
                   <div className="bg-slate-50 dark:bg-slate-800/60 p-2 rounded">
                     <span className="text-slate-500">GPS Coordinates</span>
-                    <p className="font-mono font-bold mt-0.5">{selectedStation.lat.toFixed(4)}°N, {selectedStation.lng.toFixed(4)}°E</p>
+                    <p className="font-mono font-bold mt-0.5">{(Number(selectedStation.lat) || 28.6139).toFixed(4)}°N, {(Number(selectedStation.lng) || 77.2090).toFixed(4)}°E</p>
                   </div>
                   <div className="bg-slate-50 dark:bg-slate-800/60 p-2 rounded">
                     <span className="text-slate-500">Kilometer Post</span>

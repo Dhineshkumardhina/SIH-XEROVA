@@ -159,7 +159,7 @@ export const AIExplainabilityCard: React.FC<AIExplainabilityProps> = ({
 
           <div className="space-y-2">
             {factors.map((factor, idx) => {
-              const scoreVal = Math.max(0, Math.min(100, factor.score))
+              const scoreVal = Math.max(0, Math.min(100, Number(factor.score) || 0))
               return (
                 <div key={idx} className="space-y-0.5">
                   <div className="flex items-center justify-between text-[11px]">
@@ -266,7 +266,7 @@ export const AIExplainabilityCard: React.FC<AIExplainabilityProps> = ({
                       <td className="py-2 px-3 font-mono">{alt.slot}</td>
                       <td className="py-2 px-3 text-slate-600 dark:text-slate-300">{alt.trainImpact}</td>
                       <td className="py-2 px-3 text-center font-mono">{alt.conflictCount}</td>
-                      <td className="py-2 px-3 text-center font-mono">{alt.feasibilityScore.toFixed(0)}</td>
+                      <td className="py-2 px-3 text-center font-mono">{Number(alt.feasibilityScore || 0).toFixed(0)}</td>
                       <td className="py-2 px-3 text-right">
                         <Badge
                           variant={
