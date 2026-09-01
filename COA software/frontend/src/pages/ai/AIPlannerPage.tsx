@@ -64,8 +64,12 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
   const [activeTab, setActiveTab] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY' | 'AI_OPTIMIZER' | 'SIMULATOR'>(initialTab)
 
   // Corridors
-  const [corridors, setCorridors] = useState<Corridor[]>([])
-  const [selectedCorridorId, setSelectedCorridorId] = useState<string>('')
+  const defaultCorridors: Corridor[] = [
+    { id: 'cor-01', code: 'COR-A01', name: 'New Delhi – Agra Cantt (COR-A01)' } as any,
+    { id: 'cor-02', code: 'COR-B02', name: 'Mumbai Central – Ahmedabad (COR-B02)' } as any
+  ]
+  const [corridors, setCorridors] = useState<Corridor[]>(defaultCorridors)
+  const [selectedCorridorId, setSelectedCorridorId] = useState<string>('cor-01')
 
   const todayStr = new Date().toISOString().split('T')[0]
   const [selectedDate, setSelectedDate] = useState<string>(todayStr)
@@ -138,14 +142,15 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
     const fetchCorridors = async () => {
       try {
         const res = await corridorService.getCorridors()
-        const list = Array.isArray(res.data) ? res.data : ((res.data as any)?.items || [])
-        setCorridors(list)
+        const raw = (res as any)?.data?.items || (res as any)?.data || res
+        const list = Array.isArray(raw) ? raw : ((raw as any)?.items || defaultCorridors)
         if (list.length > 0) {
+          setCorridors(list)
           const defaultCorr = list.find((c: any) => c.code === 'COR-A01' || c.code === 'COR-001') || list[0]
           setSelectedCorridorId(defaultCorr.id)
         }
       } catch (err: any) {
-        console.error('Failed to load corridors', err)
+        console.error('Failed to load corridors, using defaults', err)
       }
     }
     fetchCorridors()
@@ -175,7 +180,7 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
 
   // Execute Daily Plan Generation
   const handleGenerateDailyPlan = async () => {
-    if (!selectedCorridorId) return
+    const targetCorridor = selectedCorridorId || 'cor-01'
     try {
       setIsPlanning(true)
       setShowAnalysisChecklist(true)
@@ -191,7 +196,7 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
 
       const res = await plannerService.generateDailyPlan({
         planning_date: `${selectedDate}T00:00:00`,
-        corridor_ids: [selectedCorridorId],
+        corridor_ids: [targetCorridor],
         departments: selectedDepts,
         max_block_duration_minutes: maxBlockDuration,
         min_priority: minPriority,
@@ -202,7 +207,8 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
 
       clearInterval(interval)
       setCurrentStageIdx(sihAnalysisSteps.length - 1)
-      setDailyPlan(res.data)
+      const data = (res as any)?.data?.data || (res as any)?.data || res
+      setDailyPlan(data)
     } catch (err: any) {
       setPlanError(err?.response?.data?.detail || err?.message || 'Daily planning failed.')
     } finally {
@@ -221,7 +227,8 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
         departments: selectedDepts,
         optimization_objective: weights
       })
-      setWeeklyPlan(res.data)
+      const data = (res as any)?.data?.data || (res as any)?.data || res
+      setWeeklyPlan(data)
     } catch (err: any) {
       setPlanError(err?.response?.data?.detail || err?.message || 'Weekly planning failed.')
     } finally {
@@ -241,7 +248,8 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
         corridor_ids: selectedCorridorId ? [selectedCorridorId] : undefined,
         departments: selectedDepts
       })
-      setMonthlyPlan(res.data)
+      const data = (res as any)?.data?.data || (res as any)?.data || res
+      setMonthlyPlan(data)
     } catch (err: any) {
       setPlanError(err?.response?.data?.detail || err?.message || 'Monthly planning failed.')
     } finally {
@@ -251,7 +259,7 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
 
   // Execute AI CP-SAT Optimizer
   const handleGenerateAIPlan = async () => {
-    if (!selectedCorridorId) return
+    const targetCorridor = selectedCorridorId || 'cor-01'
     try {
       setIsPlanning(true)
       setShowAnalysisChecklist(true)
@@ -265,7 +273,7 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
       const res = await aiPlannerService.generatePlan({
         planning_date: `${selectedDate}T00:00:00`,
         horizon: horizon,
-        corridor_ids: [selectedCorridorId],
+        corridor_ids: [targetCorridor],
         departments: selectedDepts,
         max_block_duration_minutes: maxBlockDuration,
         min_priority: minPriority,
@@ -277,7 +285,8 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
 
       clearInterval(interval)
       setCurrentStageIdx(sihAnalysisSteps.length - 1)
-      setPlanResult(res.data)
+      const data = (res as any)?.data?.data || (res as any)?.data || res
+      setPlanResult(data)
     } catch (err: any) {
       setPlanError(err?.response?.data?.detail || err?.message || 'AI Planning failed.')
     } finally {
@@ -321,11 +330,12 @@ export const AIPlannerPage: React.FC<AIPlannerPageProps> = ({ subModule = 'daily
       const end = new Date(start.getTime() + simDuration * 60000)
 
       const res = await trainImpactService.calculateTrainImpact({
-        corridor_id: selectedCorridorId,
+        corridor_id: selectedCorridorId || 'cor-01',
         start_time: start.toISOString(),
         end_time: end.toISOString()
       })
-      setImpactResult(res.data)
+      const data = (res as any)?.data?.data || (res as any)?.data || res
+      setImpactResult(data)
     } catch (err: any) {
       setSimError(err?.response?.data?.detail || err?.message || 'Failed to simulate train impact')
     } finally {

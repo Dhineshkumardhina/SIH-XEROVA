@@ -797,7 +797,322 @@ export function getMockApiResponse(url: string, _method: string = 'get', _data?:
     }
   }
 
-  // 9. AI & Optimization & Planner
+  // 9. Planner & AI Optimization Engines
+  if (cleanUrl.startsWith('planner/daily') || cleanUrl.startsWith('planner/get-daily')) {
+    const dailyPlanResult = {
+      planning_id: 'AI-PLAN-DAILY-001',
+      planning_date: '2026-09-01',
+      corridor_id: 'cor-01',
+      corridor_name: 'New Delhi – Agra Cantt (COR-A01)',
+      status: 'AI_GENERATED',
+      summary: {
+        planning_run_id: 'AI-PLAN-DAILY-001',
+        planning_date: '2026-09-01',
+        planning_horizon: 'DAILY',
+        corridors_analyzed: 1,
+        tasks_analyzed: 14,
+        tasks_selected: 11,
+        tasks_unplanned: 3,
+        critical_tasks_total: 3,
+        critical_tasks_covered: 3,
+        overdue_tasks_covered: 4,
+        blocks_generated: 1,
+        shared_blocks_generated: 1,
+        departments_coordinated: 3,
+        expected_train_delay_minutes: 0.0,
+        optimization_score: 98.4,
+        planning_confidence: 98.4,
+        time_saved_minutes: 150,
+        downtime_reduction_pct: 55.6,
+        validation_status: 'VALIDATED',
+        solver_duration_seconds: 0.85,
+      },
+      recommended_blocks: [
+        {
+          block_id: 'AI-BLK-0001',
+          corridor_id: 'cor-01',
+          corridor_name: 'New Delhi – Agra Cantt (COR-A01)',
+          date: '2026-09-01',
+          start_time: '01:00',
+          end_time: '03:00',
+          duration_minutes: 120,
+          departments: ['ENG', 'SIG', 'TRC'],
+          is_shared_block: true,
+          task_count: 5,
+          critical_task_count: 2,
+          expected_train_delay: 0.0,
+          maximum_train_delay: 0.0,
+          asset_availability_gain: 18.5,
+          block_utilization: 92.4,
+          optimization_score: 98.4,
+          confidence: 98.4,
+          risk_level: 'LOW',
+          reason: 'Multi-discipline night possession gap without timetable friction.',
+          constraints_checked: ['25kV Traction Isolated', 'Pass Headway Buffer Maintained', 'Multi-Discipline Synergy Active'],
+          approval_status: 'PENDING',
+          tasks: [
+            { task_id: 'TSK-101', task_code: 'MT-ENG-001', department: 'ENG', asset_name: 'Main Line Track Section Km 45.2', priority: 'CRITICAL', duration_minutes: 120, is_overdue: true },
+            { task_id: 'TSK-102', task_code: 'MT-SIG-002', department: 'SIG', asset_name: 'Point Machine #104 Yard North', priority: 'CRITICAL', duration_minutes: 90, is_overdue: true },
+            { task_id: 'TSK-103', task_code: 'MT-TRC-003', department: 'TRC', asset_name: 'OHE Feeder Wire #245', priority: 'HIGH', duration_minutes: 90, is_overdue: false },
+            { task_id: 'TSK-104', task_code: 'MT-ENG-004', department: 'ENG', asset_name: 'Ballast Tamping Section Km 47.0', priority: 'HIGH', duration_minutes: 60, is_overdue: false },
+            { task_id: 'TSK-105', task_code: 'MT-SIG-005', department: 'SIG', asset_name: 'Track Circuit Relay #201', priority: 'MEDIUM', duration_minutes: 45, is_overdue: false }
+          ],
+          affected_trains: [],
+          alternatives: [
+            { slot: '01:00 – 03:00 (Night Window)', trainImpact: '0.0 min (Zero delay)', conflictCount: 0, feasibilityScore: 98.5, status: 'RECOMMENDED' },
+            { slot: '03:30 – 05:30 (Early Morning)', trainImpact: '+18.0 min (Freight 56813)', conflictCount: 1, feasibilityScore: 72.0, status: 'FEASIBLE' },
+            { slot: '18:00 – 20:00 (Evening Peak)', trainImpact: '+45.0 min (3 Express Trains)', conflictCount: 3, feasibilityScore: 34.0, status: 'HIGH_FRICTION' }
+          ]
+        }
+      ],
+      timeline: {
+        hours: ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'],
+        corridors: [
+          {
+            corridor_id: 'cor-01',
+            corridor_code: 'COR-A01',
+            corridor_name: 'New Delhi – Agra Cantt',
+            events: [
+              { type: 'TRAIN', title: 'Express 12601', start_time: '23:00', end_time: '00:30', status: 'SCHEDULED' },
+              { type: 'AI_BLOCK', title: 'BP-20260901-AI-BLK-0001 (120m)', start_time: '01:00', end_time: '03:00', status: 'AI_RECOMMENDED', plan_id: 'AI-BLK-0001' },
+              { type: 'TRAIN', title: 'Freight 56813', start_time: '03:30', end_time: '05:00', status: 'SCHEDULED' },
+              { type: 'TRAIN', title: 'Vande Bharat 22436', start_time: '06:00', end_time: '08:00', status: 'SCHEDULED' }
+            ]
+          },
+          {
+            corridor_id: 'cor-02',
+            corridor_code: 'COR-B02',
+            corridor_name: 'Mumbai Central – Ahmedabad',
+            events: [
+              { type: 'TRAIN', title: 'Rajdhani 12951', start_time: '16:00', end_time: '18:00', status: 'SCHEDULED' },
+              { type: 'APPROVED_BLOCK', title: 'BP-20260901-B02 (180m)', start_time: '01:30', end_time: '04:30', status: 'APPROVED', plan_id: 'BLK-B02-01' }
+            ]
+          }
+        ]
+      },
+      unplanned_tasks: [
+        { task_id: 'TSK-108', task_code: 'MT-ENG-008', department: 'ENG', priority: 'LOW', reason: 'Deferred to weekly window' }
+      ],
+      plan_comparison: {
+        manual_baseline: { total_downtime_minutes: 270, total_blocks: 3, train_delay_minutes: 26.0 },
+        ai_optimized: { total_downtime_minutes: 120, total_blocks: 1, train_delay_minutes: 0.0 },
+        savings: { time_saved_minutes: 150, downtime_reduction_pct: 55.6, train_delay_avoided_minutes: 26.0 }
+      },
+      explanation: {
+        why_selected: ['Safety Critical Switch Turnout #104', 'Overdue Track Grinding Section Km 45.2', 'OHE Catenary Alignment'],
+        why_this_time: 'Zero timetable friction between Express 12601 and Freight 56813 night gap (01:00-03:00).',
+        why_not_others: ['Deferred non-critical low priority yard tasks to daytime maintenance siding'],
+        overall_narrative: ['CP-SAT solver bundled 3 separate departmental possession requests into 1 unified 120-minute window.'],
+        validation_checks: ['25kV Traction Isolated', 'Pass Headway Buffer Maintained', 'Multi-Discipline Synergy Active']
+      }
+    }
+    return { success: true, data: dailyPlanResult, message: 'Daily maintenance block plan generated successfully' }
+  }
+
+  if (cleanUrl.startsWith('planner/weekly')) {
+    const weeklyPlanResult = {
+      weekly_plan_id: 'WK-PLAN-2026-0901',
+      status: 'COMPLETED',
+      start_date: '2026-09-01',
+      end_date: '2026-09-07',
+      summary: {
+        weekly_plan_id: 'WK-PLAN-2026-0901',
+        start_date: '2026-09-01',
+        end_date: '2026-09-07',
+        total_tasks_scheduled: 42,
+        critical_tasks_covered: 8,
+        overdue_reduction_pct: 75.0,
+        total_blocks_planned: 7,
+        shared_blocks_count: 5,
+        average_block_utilization_pct: 88.6,
+        total_expected_train_delay_minutes: 0.0,
+        asset_availability_gain_pct: 14.2,
+        optimization_score: 96.5,
+      },
+      days: [
+        { day_index: 0, day_name: 'Mon', date: '2026-09-01', tasks_count: 6, critical_tasks_count: 2, blocks_count: 1, expected_train_delay: 0, block_utilization_pct: 92.0, status: 'OPTIMAL' },
+        { day_index: 1, day_name: 'Tue', date: '2026-09-02', tasks_count: 5, critical_tasks_count: 1, blocks_count: 1, expected_train_delay: 0, block_utilization_pct: 89.0, status: 'OPTIMAL' },
+        { day_index: 2, day_name: 'Wed', date: '2026-09-03', tasks_count: 7, critical_tasks_count: 2, blocks_count: 1, expected_train_delay: 0, block_utilization_pct: 94.0, status: 'OPTIMAL' },
+        { day_index: 3, day_name: 'Thu', date: '2026-09-04', tasks_count: 6, critical_tasks_count: 1, blocks_count: 1, expected_train_delay: 0, block_utilization_pct: 86.0, status: 'OPTIMAL' },
+        { day_index: 4, day_name: 'Fri', date: '2026-09-05', tasks_count: 5, critical_tasks_count: 1, blocks_count: 1, expected_train_delay: 0, block_utilization_pct: 85.0, status: 'OPTIMAL' },
+        { day_index: 5, day_name: 'Sat', date: '2026-09-06', tasks_count: 8, critical_tasks_count: 1, blocks_count: 1, expected_train_delay: 0, block_utilization_pct: 90.0, status: 'OPTIMAL' },
+        { day_index: 6, day_name: 'Sun', date: '2026-09-07', tasks_count: 5, critical_tasks_count: 0, blocks_count: 1, expected_train_delay: 0, block_utilization_pct: 84.0, status: 'OPTIMAL' },
+      ],
+      plan_comparison: {
+        manual_baseline: { total_downtime_minutes: 1890, total_blocks: 21 },
+        ai_optimized: { total_downtime_minutes: 840, total_blocks: 7 },
+        savings: { time_saved_minutes: 1050, downtime_reduction_pct: 55.6 }
+      }
+    }
+    return { success: true, data: weeklyPlanResult, message: 'Weekly maintenance block plan generated successfully' }
+  }
+
+  if (cleanUrl.startsWith('planner/monthly')) {
+    const monthlyPlanResult = {
+      monthly_plan_id: 'MO-PLAN-2026-09',
+      year: 2026,
+      month: 9,
+      status: 'COMPLETED',
+      summary: {
+        total_tasks_scheduled: 168,
+        total_blocks_planned: 28,
+        shared_blocks_planned: 22,
+        expected_overdue_reduction_pct: 88.0,
+        average_utilization_pct: 89.4,
+        expected_asset_availability_pct: 98.1,
+        optimization_score: 97.2,
+      },
+      weeks: [
+        { week_number: 1, start_date: '2026-09-01', end_date: '2026-09-07', tasks_quota: 42, critical_tasks_scheduled: 8, blocks_planned: 7, utilization_pct: 88.6, status: 'SCHEDULED' },
+        { week_number: 2, start_date: '2026-09-08', end_date: '2026-09-14', tasks_quota: 40, critical_tasks_scheduled: 6, blocks_planned: 7, utilization_pct: 90.2, status: 'SCHEDULED' },
+        { week_number: 3, start_date: '2026-09-15', end_date: '2026-09-21', tasks_quota: 44, critical_tasks_scheduled: 7, blocks_planned: 7, utilization_pct: 87.5, status: 'SCHEDULED' },
+        { week_number: 4, start_date: '2026-09-22', end_date: '2026-09-30', tasks_quota: 42, critical_tasks_scheduled: 5, blocks_planned: 7, utilization_pct: 91.0, status: 'SCHEDULED' }
+      ],
+      department_workload: [
+        { department: 'Civil Track (ENG)', tasks_count: 68, quota_pct: 40.5 },
+        { department: 'Signaling & Telecom (SIG)', tasks_count: 56, quota_pct: 33.3 },
+        { department: 'Electrical Traction (TRC)', tasks_count: 44, quota_pct: 26.2 }
+      ]
+    }
+    return { success: true, data: monthlyPlanResult, message: 'Monthly capacity plan generated successfully' }
+  }
+
+  if (cleanUrl.includes('/modify')) {
+    return {
+      success: true,
+      data: {
+        is_valid: true,
+        message: 'Possession window rescheduled successfully. Conflict matrix evaluated: 0 conflicts.',
+        new_start_time: '01:00',
+        new_end_time: '03:00'
+      }
+    }
+  }
+
+  if (cleanUrl.includes('/publish')) {
+    return {
+      success: true,
+      data: {
+        status: 'PUBLISHED',
+        message: 'Block plan successfully approved and published to divisional train control.'
+      }
+    }
+  }
+
+  if (cleanUrl.includes('/reset')) {
+    return {
+      success: true,
+      data: {
+        status: 'RESET',
+        message: 'SIH Demonstration scenario reset to original deterministic baseline.'
+      }
+    }
+  }
+
+  if (cleanUrl.startsWith('ai/planner') || cleanUrl.startsWith('planner/ai')) {
+    const aiPlanningResultData = {
+      planning_run_id: 'AI-RUN-2026-0901',
+      status: 'COMPLETED',
+      planning_date: '2026-09-01',
+      horizon: 'DAILY',
+      corridor_id: 'cor-01',
+      corridor_name: 'New Delhi – Agra Cantt (COR-A01)',
+      summary: {
+        planning_run_id: 'AI-RUN-2026-0901',
+        planning_date: '2026-09-01',
+        planning_horizon: 'DAILY',
+        corridors_analyzed: 1,
+        tasks_analyzed: 14,
+        tasks_selected: 11,
+        tasks_unplanned: 3,
+        critical_tasks_total: 3,
+        critical_tasks_covered: 3,
+        overdue_tasks_covered: 4,
+        blocks_generated: 1,
+        shared_blocks_generated: 1,
+        departments_coordinated: 3,
+        expected_train_delay_minutes: 0.0,
+        optimization_score: 98.4,
+        planning_confidence: 98.4,
+        time_saved_minutes: 150,
+        downtime_reduction_pct: 55.6,
+        validation_status: 'VALIDATED',
+        solver_duration_seconds: 0.85
+      },
+      recommended_blocks: [
+        {
+          block_id: 'AI-BLK-0001',
+          corridor_id: 'cor-01',
+          corridor_name: 'New Delhi – Agra Cantt (COR-A01)',
+          date: '2026-09-01',
+          start_time: '01:00',
+          end_time: '03:00',
+          duration_minutes: 120,
+          departments: ['ENG', 'SIG', 'TRC'],
+          is_shared_block: true,
+          task_count: 5,
+          critical_task_count: 2,
+          expected_train_delay: 0.0,
+          maximum_train_delay: 0.0,
+          asset_availability_gain: 18.5,
+          block_utilization: 92.4,
+          optimization_score: 98.4,
+          confidence: 98.4,
+          risk_level: 'LOW',
+          reason: 'Multi-discipline night possession gap without timetable friction.',
+          constraints_checked: ['25kV Traction Isolated', 'Pass Headway Buffer Maintained', 'Multi-Discipline Synergy Active'],
+          approval_status: 'PENDING',
+          tasks: [
+            { task_id: 'TSK-101', task_code: 'MT-ENG-001', department: 'ENG', asset_name: 'Main Line Track Section Km 45.2', priority: 'CRITICAL', duration_minutes: 120, is_overdue: true },
+            { task_id: 'TSK-102', task_code: 'MT-SIG-002', department: 'SIG', asset_name: 'Point Machine #104 Yard North', priority: 'CRITICAL', duration_minutes: 90, is_overdue: true },
+            { task_id: 'TSK-103', task_code: 'MT-TRC-003', department: 'TRC', asset_name: 'OHE Feeder Wire #245', priority: 'HIGH', duration_minutes: 90, is_overdue: false }
+          ],
+          affected_trains: [],
+          alternatives: []
+        }
+      ],
+      unplanned_tasks: [
+        { task_id: 'TSK-108', task_code: 'MT-ENG-008', department: 'ENG', priority: 'LOW', reason: 'Lower priority; deferred to weekly possession window' }
+      ],
+      plan_comparison: {
+        baseline_downtime_minutes: 270,
+        optimized_downtime_minutes: 120,
+        downtime_saved_minutes: 150,
+        baseline_train_delay_minutes: 26.0,
+        optimized_train_delay_minutes: 0.0
+      },
+      explanation: {
+        why_selected: ['Safety Critical Switch Overhaul', 'Overdue Track Grinding'],
+        why_not_others: ['Deferred routine low-priority tasks to secondary window'],
+        overall_narrative: ['CP-SAT solver achieved 55.6% downtime reduction with zero express train delays.'],
+        validation_checks: ['Electrical Isolation Verified', 'Headway Clearance Maintained']
+      }
+    }
+    return { success: true, data: aiPlanningResultData, message: 'AI maintenance block plan generated successfully' }
+  }
+
+  if (cleanUrl.startsWith('ai/train-impact') || cleanUrl.startsWith('train-impact') || cleanUrl.startsWith('trains/impact')) {
+    const trainImpactData = {
+      corridor_id: 'cor-01',
+      corridor_name: 'New Delhi – Agra Cantt (COR-A01)',
+      start_time: '2026-09-01T01:00:00Z',
+      end_time: '2026-09-01T03:00:00Z',
+      duration_minutes: 120,
+      affected_trains_count: 0,
+      total_delay_minutes: 0.0,
+      max_delay_minutes: 0.0,
+      train_impacts: [],
+      risk_level: 'LOW',
+      recommendations: ['Recommended window: Zero train delays predicted between 01:00 and 03:00.'],
+      alternatives: [
+        { start_time: '01:00', duration_minutes: 120, train_impact_minutes: 0.0, feasibility_score: 98.5, label: '01:00 – 03:00 (Zero Delay)' },
+        { start_time: '03:30', duration_minutes: 120, train_impact_minutes: 18.0, feasibility_score: 72.0, label: '03:30 – 05:30 (+18m Freight)' }
+      ]
+    }
+    return { success: true, data: trainImpactData, message: 'Train impact simulated successfully' }
+  }
+
+  // 10. General AI & Optimization
   if (cleanUrl.startsWith('ai') || cleanUrl.startsWith('optimization') || cleanUrl.startsWith('planner')) {
     return {
       success: true,
