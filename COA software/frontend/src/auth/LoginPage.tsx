@@ -14,8 +14,8 @@ const DEMO_PERSONAS = [
 ]
 
 export default function LoginPage() {
-  const [identifier, setIdentifier] = useState('')
-  const [password, setPassword] = useState('')
+  const [identifier, setIdentifier] = useState('control')
+  const [password, setPassword] = useState('RailoptDemo@2026')
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(true)
 
