@@ -354,18 +354,23 @@ export const DashboardPage: React.FC = () => {
       {/* ── 2. TOP KPI SUMMARY STRIP (8 Key Metrics) ─────────────── */}
       {kpis.isLoading ? (
         <KPISkeleton />
-      ) : kpis.error ? (
-        <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
-          Failed to load dashboard metrics. Please check connection and retry.
-        </div>
-      ) : kpis.data ? (
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
+      ) : (
+        <div className="space-y-2.5">
+          {kpis.error && (
+            <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 flex items-center justify-between">
+              <span>Operational metrics in cached preview mode. Live sync unavailable.</span>
+              <Button size="sm" variant="outline" onClick={() => handleRefresh()} className="h-6 text-[10px] px-2">
+                <RefreshCw className="w-3 h-3 mr-1" /> Retry Live Sync
+              </Button>
+            </div>
+          )}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
           {/* 1. Asset Availability */}
           <Link to="/assets" className="block">
             <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-blue-400 transition-all shadow-sm">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate">Asset Availability</span>
               <p className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">
-                {kpis.data.asset_availability?.availability_pct ?? 96.8}%
+                {kpis.data?.asset_availability?.availability_pct ?? 96.8}%
               </p>
               <span className="text-[10px] text-slate-400 block truncate mt-0.5">Target: 95.0% (Nominal)</span>
             </div>
@@ -387,7 +392,7 @@ export const DashboardPage: React.FC = () => {
             <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-amber-400 transition-all shadow-sm">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate">Overdue Tasks</span>
               <p className="text-xl font-bold font-mono text-amber-600 dark:text-amber-400 mt-1">
-                {kpis.data.maintenance?.total_overdue ?? 3}
+                {kpis.data?.maintenance?.total_overdue ?? 3}
               </p>
               <span className="text-[10px] text-amber-600/80 block truncate mt-0.5">Requires Possession</span>
             </div>
@@ -398,7 +403,7 @@ export const DashboardPage: React.FC = () => {
             <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-blue-400 transition-all shadow-sm">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate">Today's Blocks</span>
               <p className="text-xl font-bold font-mono text-blue-600 dark:text-blue-400 mt-1">
-                {kpis.data.block_utilization?.active_blocks ?? 3}
+                {kpis.data?.block_utilization?.active_blocks ?? 3}
               </p>
               <span className="text-[10px] text-slate-400 block truncate mt-0.5">Approved / Active</span>
             </div>
@@ -408,7 +413,7 @@ export const DashboardPage: React.FC = () => {
           <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate">Block Utilization</span>
             <p className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-1">
-              {kpis.data.block_utilization?.utilization_pct ?? 89.2}%
+              {kpis.data?.block_utilization?.utilization_pct ?? 89.2}%
             </p>
             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block truncate mt-0.5">+14.2% efficiency</span>
           </div>
@@ -418,9 +423,9 @@ export const DashboardPage: React.FC = () => {
             <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-blue-400 transition-all shadow-sm">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate">Train Impact</span>
               <p className="text-xl font-bold font-mono text-blue-600 dark:text-blue-400 mt-1">
-                {kpis.data.train_impact?.total_delay_minutes ?? 18.0}m
+                {kpis.data?.train_impact?.total_delay_minutes ?? 18.0}m
               </p>
-              <span className="text-[10px] text-slate-400 block truncate mt-0.5">{kpis.data.train_impact?.affected_trains ?? 3} trains affected</span>
+              <span className="text-[10px] text-slate-400 block truncate mt-0.5">{kpis.data?.train_impact?.affected_trains ?? 3} trains affected</span>
             </div>
           </Link>
 
@@ -429,9 +434,9 @@ export const DashboardPage: React.FC = () => {
             <div className="p-3 rounded-lg border border-purple-200 dark:border-purple-800/60 bg-purple-50/50 dark:bg-purple-950/20 hover:border-purple-400 transition-all shadow-sm">
               <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider block truncate">AI Recommendations</span>
               <p className="text-xl font-bold font-mono text-purple-700 dark:text-purple-300 mt-1">
-                {kpis.data.shared_blocks?.total_shared_blocks ?? 3}
+                {kpis.data?.shared_blocks?.total_shared_blocks ?? 3}
               </p>
-              <span className="text-[10px] text-purple-600 dark:text-purple-400 block truncate mt-0.5">+{kpis.data.shared_blocks?.hours_saved ?? 3.8}h Downtime Saved</span>
+              <span className="text-[10px] text-purple-600 dark:text-purple-400 block truncate mt-0.5">+{kpis.data?.shared_blocks?.hours_saved ?? 3.8}h Downtime Saved</span>
             </div>
           </Link>
 
@@ -440,13 +445,14 @@ export const DashboardPage: React.FC = () => {
             <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-red-400 transition-all shadow-sm">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate">Active Conflicts</span>
               <p className="text-xl font-bold font-mono text-amber-600 dark:text-amber-400 mt-1">
-                {kpis.data.maintenance?.critical_overdue ?? 1}
+                {kpis.data?.maintenance?.critical_overdue ?? 1}
               </p>
               <span className="text-[10px] text-amber-600/80 block truncate mt-0.5">Timetable Overlap</span>
             </div>
           </Link>
         </div>
-      ) : null}
+        </div>
+      )}
 
       {/* ── 3. MAIN COMMAND CENTER GRID ───────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

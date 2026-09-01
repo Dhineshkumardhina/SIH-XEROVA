@@ -1,51 +1,405 @@
 /**
  * RAILOPT AI — Synthetic Offline / Demo API Response Handler
  * Automatically intercepts and serves rich railway operational datasets
- * whenever the remote backend server is offline or unreachable.
+ * whenever the remote backend server is offline, unreachable, or in demo mode.
  */
 
 export function getMockApiResponse(url: string, _method: string = 'get', _data?: any): any {
-  const cleanUrl = url.split('?')[0].replace(/^\/api\/v1/, '').replace(/^\/+/, '')
+  // Strip protocol, host, and /api/v1 prefix safely
+  const cleanUrl = url
+    .split('?')[0]
+    .replace(/^https?:\/\/[^\/]+/, '')
+    .replace(/^\/api\/v1\/?/, '')
+    .replace(/^\/+/, '')
 
-  // 1. Dashboard & Analytics
+  // 1. Dashboard & Operations Analytics
   if (cleanUrl.startsWith('analytics/dashboard') || cleanUrl === 'dashboard/stats') {
     return {
       success: true,
+      message: 'Dashboard analytics retrieved successfully',
       data: {
-        asset_availability: 96.8,
-        active_blocks: 3,
-        critical_defects: 4,
-        overdue_tasks: 7,
-        total_corridors: 8,
-        active_trains: 42,
-        downtime_saved_hours: 14.5,
-        conflict_reduction_pct: 100,
-        availability_trend: [
-          { name: 'Mon', availability: 95.2, target: 97 },
-          { name: 'Tue', availability: 96.1, target: 97 },
-          { name: 'Wed', availability: 94.8, target: 97 },
-          { name: 'Thu', availability: 97.3, target: 97 },
-          { name: 'Fri', availability: 96.8, target: 97 },
-          { name: 'Sat', availability: 98.1, target: 97 },
-          { name: 'Sun', availability: 97.5, target: 97 },
-        ],
-        department_workload: [
-          { department: 'Civil Track (ENG)', active: 34, completed: 28, overdue: 4 },
-          { department: 'Signaling & Telecom (SIG)', active: 21, completed: 19, overdue: 2 },
-          { department: 'Electrical Traction (TRC)', active: 14, completed: 12, overdue: 1 },
-          { department: 'Operating & Traffic (OPT)', active: 18, completed: 18, overdue: 0 },
-        ],
-        block_utilization: [
-          { name: 'COR-A01 Delhi-Agra', planned: 240, actual: 210, efficiency: 87.5 },
-          { name: 'COR-B02 Mumbai-Pune', planned: 270, actual: 245, efficiency: 90.7 },
-          { name: 'COR-C03 Howrah-Kharagpur', planned: 150, actual: 148, efficiency: 98.7 },
-          { name: 'COR-D04 Chennai-Arakkonam', planned: 180, actual: 120, efficiency: 66.7 },
+        asset_availability: {
+          availability_pct: 96.8,
+          total_assets: 120,
+          healthy_assets: 116,
+          degraded_assets: 4,
+          formula: 'healthy_assets / total_assets * 100',
+        },
+        block_utilization: {
+          utilization_pct: 89.2,
+          allocated_minutes: 840,
+          used_minutes: 723,
+          active_blocks: 3,
+          formula: 'actual_maintenance_duration / allocated_block_duration * 100',
+        },
+        maintenance: {
+          total_tasks: 45,
+          completed_tasks: 38,
+          completion_rate_pct: 84.4,
+          total_overdue: 3,
+          critical_overdue: 1,
+          overdue_reduction_pct: 24.5,
+        },
+        train_impact: {
+          affected_trains: 3,
+          total_delay_minutes: 18.0,
+          avg_delay_minutes: 6.0,
+          max_delay_minutes: 18.0,
+        },
+        shared_blocks: {
+          total_shared_blocks: 3,
+          tasks_consolidated: 12,
+          departments_coordinated: 3,
+          hours_saved: 3.8,
+          downtime_reduction_pct: 52.4,
+        },
+        insights: [
+          {
+            severity: 'CRITICAL',
+            category: 'MAINTENANCE',
+            title: 'Critical Track & Signal Maintenance Required',
+            description: 'Track section Km 45.2–48.0 requires urgent tamping and point machine inspection.',
+            recommendation: 'Bundle ENG and SIG tasks into upcoming Night Window #3.',
+          },
+          {
+            severity: 'HIGH',
+            category: 'COORDINATION',
+            title: 'Cross-Department Shadow Possession Opportunity',
+            description: 'OHE maintenance on Feeder Line #245 coincides with Track Grinding on COR-A01.',
+            recommendation: 'Coordinate joint block window to save 90 minutes total corridor downtime.',
+          },
+          {
+            severity: 'INFO',
+            category: 'NETWORK',
+            title: 'Optimal Punctuality on New Delhi – Agra Corridor',
+            description: 'Current asset availability stands at 96.8% with zero major timetable conflicts.',
+            recommendation: 'Maintain standard preventive inspection schedule.',
+          },
         ],
       },
     }
   }
 
-  // 2. Corridors
+  // 1b. Trends Analytics
+  if (cleanUrl.startsWith('analytics/trends')) {
+    return {
+      success: true,
+      message: 'Trend analytics retrieved successfully',
+      data: [
+        { date: '2026-08-26', availability: 95.2, target: 97.0 },
+        { date: '2026-08-27', availability: 96.1, target: 97.0 },
+        { date: '2026-08-28', availability: 94.8, target: 97.0 },
+        { date: '2026-08-29', availability: 97.3, target: 97.0 },
+        { date: '2026-08-30', availability: 96.8, target: 97.0 },
+        { date: '2026-08-31', availability: 98.1, target: 97.0 },
+        { date: '2026-09-01', availability: 96.8, target: 97.0 },
+      ],
+    }
+  }
+
+  // 1c. Asset Analytics
+  if (cleanUrl.startsWith('analytics/assets')) {
+    return {
+      success: true,
+      data: {
+        kpis: {
+          total_assets: 120,
+          healthy_assets: 116,
+          monitor_assets: 2,
+          degraded_assets: 2,
+          critical_assets: 0,
+          average_health_score: 88.4,
+          asset_availability_pct: 96.8,
+        },
+        health_distribution: [
+          { score_range: '90-100 (Optimal)', count: 82 },
+          { score_range: '75-89 (Good)', count: 34 },
+          { score_range: '60-74 (Monitor)', count: 3 },
+          { score_range: '<60 (Degraded)', count: 1 },
+        ],
+        department_analytics: [
+          { department_code: 'ENG', total_assets: 54, healthy_count: 51, degraded_count: 3, avg_health: 86.2 },
+          { department_code: 'SIG', total_assets: 38, healthy_count: 37, degraded_count: 1, avg_health: 91.5 },
+          { department_code: 'TRC', total_assets: 28, healthy_count: 28, degraded_count: 0, avg_health: 94.0 },
+        ],
+        critical_assets: [
+          { id: 'TRK-4582', asset_code: 'TRK-4582', name: 'Main Line Track Section A-B', health_score: 58.2, criticality_score: 85.0 },
+          { id: 'OHE-245', asset_code: 'OHE-245', name: 'OHE Feeder Line #245', health_score: 62.4, criticality_score: 92.0 },
+        ],
+      },
+    }
+  }
+
+  // 1d. Maintenance Analytics
+  if (cleanUrl.startsWith('analytics/maintenance')) {
+    return {
+      success: true,
+      data: {
+        kpis: {
+          total_tasks: 45,
+          completed_tasks: 38,
+          completion_rate_pct: 84.4,
+          total_overdue: 3,
+          critical_overdue: 1,
+        },
+        priority_distribution: [
+          { priority: 'CRITICAL', count: 4 },
+          { priority: 'HIGH', count: 12 },
+          { priority: 'MEDIUM', count: 21 },
+          { priority: 'LOW', count: 8 },
+        ],
+        status_distribution: [
+          { status: 'COMPLETED', count: 38 },
+          { status: 'PLANNED', count: 4 },
+          { status: 'IN_PROGRESS', count: 3 },
+        ],
+        workload_by_department: [
+          { department_code: 'ENG', department_name: 'Civil Track', total_tasks: 18, overdue_tasks: 2, completion_rate: 82.0 },
+          { department_code: 'SIG', department_name: 'Signaling & Telecom', total_tasks: 15, overdue_tasks: 1, completion_rate: 88.0 },
+          { department_code: 'TRC', department_name: 'Electrical Traction', total_tasks: 12, overdue_tasks: 0, completion_rate: 91.5 },
+        ],
+        department_workload: [
+          { department_code: 'ENG', department_name: 'Civil Track', task_count: 18, overdue_count: 2, total_hours: 45 },
+          { department_code: 'SIG', department_name: 'Signaling & Telecom', task_count: 15, overdue_count: 1, total_hours: 32 },
+          { department_code: 'TRC', department_name: 'Electrical Traction', task_count: 12, overdue_count: 0, total_hours: 24 },
+        ],
+        overdue_table: [
+          { task_id: 'TSK-101', task_code: 'MT-001', department_code: 'ENG', department_name: 'Civil Track', overdue_count: 2 },
+          { task_id: 'TSK-102', task_code: 'MT-002', department_code: 'SIG', department_name: 'Signaling & Telecom', overdue_count: 1 },
+        ],
+      },
+    }
+  }
+
+  // 1e. Block Analytics
+  if (cleanUrl.startsWith('analytics/blocks')) {
+    return {
+      success: true,
+      data: {
+        kpis: {
+          utilization_pct: 89.2,
+          allocated_minutes: 840,
+          used_minutes: 723,
+          active_blocks: 3,
+        },
+        duration_analysis: {
+          allocated_minutes: 840,
+          used_minutes: 723,
+          efficiency: 86.1,
+        },
+        shared_blocks_summary: {
+          total_shared: 3,
+          hours_saved: 3.8,
+          departments: 3,
+        },
+        utilization_trend: [
+          { day: 'Mon', planned: 240, actual: 210 },
+          { day: 'Tue', planned: 270, actual: 245 },
+          { day: 'Wed', planned: 180, actual: 170 },
+          { day: 'Thu', planned: 150, actual: 148 },
+        ],
+        before_vs_after: {
+          isolated_downtime_hours: 4.5,
+          shared_downtime_hours: 2.0,
+          savings_minutes: 150,
+        },
+      },
+    }
+  }
+
+  // 1f. Train Impact Analytics
+  if (cleanUrl.startsWith('analytics/train-impact')) {
+    return {
+      success: true,
+      data: {
+        kpis: {
+          affected_trains: 3,
+          total_delay_minutes: 18.0,
+          avg_delay_minutes: 6.0,
+          max_delay_minutes: 18.0,
+        },
+        impact_by_type: [
+          { type: 'SUPERFAST', affected: 1, delay: 5.0 },
+          { type: 'EXPRESS', affected: 1, delay: 8.0 },
+          { type: 'GOODS', affected: 1, delay: 5.0 },
+        ],
+        hourly_density: [
+          { hour: 0, passenger_trains: 2, freight_trains: 4 },
+          { hour: 4, passenger_trains: 6, freight_trains: 3 },
+          { hour: 8, passenger_trains: 14, freight_trains: 2 },
+          { hour: 12, passenger_trains: 11, freight_trains: 3 },
+          { hour: 16, passenger_trains: 16, freight_trains: 2 },
+          { hour: 20, passenger_trains: 12, freight_trains: 4 },
+        ],
+      },
+    }
+  }
+
+  // 1g. Corridor Analytics
+  if (cleanUrl.startsWith('analytics/corridors')) {
+    return {
+      success: true,
+      data: {
+        formula: '(availability_score * 0.4) + (punctuality_score * 0.4) + (defect_score * 0.2)',
+        corridor_rankings: [
+          {
+            corridor_id: 'cor-01',
+            corridor_code: 'COR-A01',
+            corridor_name: 'New Delhi – Agra Cantt High-Density Trunk',
+            status: 'NORMAL',
+            asset_availability: 96.8,
+            total_assets: 48,
+            critical_defects: 1,
+            pending_maintenance: 3,
+            active_blocks: 1,
+            train_density: 'HIGH',
+          },
+          {
+            corridor_id: 'cor-02',
+            corridor_code: 'COR-B02',
+            corridor_name: 'Mumbai Central – Ahmedabad Western Line',
+            status: 'NORMAL',
+            asset_availability: 97.4,
+            total_assets: 94,
+            critical_defects: 0,
+            pending_maintenance: 2,
+            active_blocks: 2,
+            train_density: 'VERY_HIGH',
+          },
+          {
+            corridor_id: 'cor-03',
+            corridor_code: 'COR-C03',
+            corridor_name: 'Howrah – Kharagpur South Eastern Trunk',
+            status: 'ATTENTION',
+            asset_availability: 94.2,
+            total_assets: 36,
+            critical_defects: 2,
+            pending_maintenance: 4,
+            active_blocks: 0,
+            train_density: 'VERY_HIGH',
+          },
+          {
+            corridor_id: 'cor-04',
+            corridor_code: 'COR-D04',
+            corridor_name: 'Chennai Central – Arakkonam Suburban Quad',
+            status: 'NORMAL',
+            asset_availability: 98.1,
+            total_assets: 29,
+            critical_defects: 0,
+            pending_maintenance: 1,
+            active_blocks: 0,
+            train_density: 'HIGH',
+          },
+        ],
+        corridors: [
+          {
+            corridor_id: 'cor-01',
+            corridor_code: 'COR-A01',
+            corridor_name: 'New Delhi – Agra Cantt High-Density Trunk',
+            status: 'NORMAL',
+            asset_availability: 96.8,
+            total_assets: 48,
+            critical_defects: 1,
+            pending_maintenance: 3,
+            active_blocks: 1,
+            train_density: 'HIGH',
+          },
+        ],
+      },
+    }
+  }
+
+  // 2. Risk & AI Endpoints
+  if (cleanUrl.startsWith('ai/risk/summary') || cleanUrl.startsWith('risk/summary')) {
+    return {
+      success: true,
+      data: {
+        total_assessed: 120,
+        critical_risk_count: 2,
+        high_risk_count: 5,
+        medium_risk_count: 14,
+        low_risk_count: 99,
+        avg_health_score: 88.4,
+        high_risk_assets: [
+          {
+            asset_id: 'TRK-4582',
+            asset_code: 'TRK-4582',
+            asset_name: 'Main Line Track Section A-B',
+            asset_type: 'TRACK',
+            department: 'ENG',
+            health_score: 58.2,
+            failure_probability: 0.82,
+            risk_level: 'CRITICAL',
+            recommended_action: 'Schedule emergency tamping block within 48 hours',
+          },
+          {
+            asset_id: 'OHE-245',
+            asset_code: 'OHE-245',
+            asset_name: 'OHE Feeder Line #245',
+            asset_type: 'TRACTION',
+            department: 'TRC',
+            health_score: 62.4,
+            failure_probability: 0.76,
+            risk_level: 'CRITICAL',
+            recommended_action: 'OHE contact wire inspection and insulator wash',
+          },
+        ],
+      },
+    }
+  }
+
+  if (cleanUrl.startsWith('ai/risk/high-risk') || cleanUrl.startsWith('ai/risk/high') || cleanUrl.startsWith('risk/high')) {
+    const highRiskList = [
+      {
+        asset_id: 'TRK-4582',
+        asset_code: 'TRK-4582',
+        asset_name: 'Main Line Track Section A-B',
+        asset_type: 'TRACK',
+        department: 'ENG',
+        health_score: 58.2,
+        failure_probability: 0.82,
+        risk_level: 'CRITICAL',
+        corridor_code: 'COR-A01',
+        predicted_failure_date: '2026-09-04',
+        recommended_action: 'Schedule emergency tamping block within 48 hours',
+      },
+      {
+        asset_id: 'OHE-245',
+        asset_code: 'OHE-245',
+        asset_name: 'OHE Feeder Line #245',
+        asset_type: 'TRACTION',
+        department: 'TRC',
+        health_score: 62.4,
+        failure_probability: 0.76,
+        risk_level: 'CRITICAL',
+        corridor_code: 'COR-A01',
+        predicted_failure_date: '2026-09-05',
+        recommended_action: 'OHE contact wire inspection and insulator wash',
+      },
+      {
+        asset_id: 'SIG-1201',
+        asset_code: 'SIG-1201',
+        asset_name: 'Signal Relay Room North',
+        asset_type: 'SIGNAL',
+        department: 'SIG',
+        health_score: 71.3,
+        failure_probability: 0.54,
+        risk_level: 'HIGH',
+        corridor_code: 'COR-A01',
+        predicted_failure_date: '2026-09-12',
+        recommended_action: 'Perform relay testing and battery bank check',
+      },
+    ]
+    return {
+      success: true,
+      data: {
+        items: highRiskList,
+        pagination: { total: highRiskList.length, page: 1, page_size: 10, total_pages: 1 },
+      },
+    }
+  }
+
+  // 3. Corridors
   if (cleanUrl.startsWith('corridors')) {
     const corridorList = [
       {
@@ -133,7 +487,7 @@ export function getMockApiResponse(url: string, _method: string = 'get', _data?:
     }
   }
 
-  // 3. Block Requests & Plans
+  // 4. Block Requests & Plans
   if (cleanUrl.startsWith('blocks')) {
     const blockList = [
       {
@@ -201,7 +555,7 @@ export function getMockApiResponse(url: string, _method: string = 'get', _data?:
     }
   }
 
-  // 4. Trains & Timetables
+  // 5. Trains & Timetables
   if (cleanUrl.startsWith('trains')) {
     const trainList = [
       {
@@ -271,7 +625,7 @@ export function getMockApiResponse(url: string, _method: string = 'get', _data?:
     }
   }
 
-  // 5. Assets
+  // 6. Assets
   if (cleanUrl.startsWith('assets')) {
     const assetList = [
       {
@@ -333,7 +687,7 @@ export function getMockApiResponse(url: string, _method: string = 'get', _data?:
     }
   }
 
-  // 6. Maintenance Tasks
+  // 7. Maintenance Tasks
   if (cleanUrl.startsWith('maintenance')) {
     const taskList = [
       {
@@ -380,7 +734,7 @@ export function getMockApiResponse(url: string, _method: string = 'get', _data?:
     }
   }
 
-  // 7. Defects
+  // 8. Defects
   if (cleanUrl.startsWith('defects')) {
     const defectList = [
       {
@@ -408,6 +762,18 @@ export function getMockApiResponse(url: string, _method: string = 'get', _data?:
         location: 'Km 52.4',
         tsr_required: false,
       },
+      {
+        id: 'def-03',
+        defect_code: 'DEF-SIG-003',
+        asset_id: 'SIG-1201',
+        asset_name: 'Signal Relay Room North',
+        severity: 'MEDIUM',
+        status: 'OPEN',
+        defect_type: 'TRACK_CIRCUIT_FLICKER',
+        reported_at: '2026-08-31T14:10:00Z',
+        location: 'Station Alpha',
+        tsr_required: false,
+      },
     ]
 
     return {
@@ -419,7 +785,7 @@ export function getMockApiResponse(url: string, _method: string = 'get', _data?:
     }
   }
 
-  // 8. AI & Optimization
+  // 9. AI & Optimization & Planner
   if (cleanUrl.startsWith('ai') || cleanUrl.startsWith('optimization') || cleanUrl.startsWith('planner')) {
     return {
       success: true,
@@ -448,7 +814,7 @@ export function getMockApiResponse(url: string, _method: string = 'get', _data?:
     }
   }
 
-  // 9. Simulation & Digital Twin
+  // 10. Simulation & Digital Twin
   if (cleanUrl.startsWith('simulation')) {
     return {
       success: true,
@@ -470,7 +836,7 @@ export function getMockApiResponse(url: string, _method: string = 'get', _data?:
     }
   }
 
-  // 10. Generic fallback response
+  // 11. Generic fallback response
   return {
     success: true,
     data: {
