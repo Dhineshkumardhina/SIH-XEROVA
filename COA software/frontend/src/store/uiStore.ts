@@ -24,7 +24,7 @@ const THEME_STORAGE_KEY = 'railopt_theme'
 const getInitialTheme = (): ThemeMode => {
   if (typeof window === 'undefined') return 'light'
   const saved = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null
-  if (saved === 'light' || saved === 'dark') return saved
+  if (saved === 'dark') return 'dark'
   return 'light'
 }
 

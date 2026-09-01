@@ -155,67 +155,23 @@ export const AppRoutes: React.FC = () => {
 
         {/* Notifications & Audit */}
         <Route path="/notifications" element={<NotificationsPage />} />
-        <Route
-          path="/audit"
-          element={
-            <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTROL_OFFICER']}>
-              <AuditPage />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/audit" element={<AuditPage />} />
+        <Route path="/admin/audit" element={<AuditPage />} />
 
         {/* System Architecture Blueprint */}
         <Route path="/architecture" element={<ArchitecturePage />} />
 
-        {/* Admin Hierarchy */}
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute requiredRole="SUPER_ADMIN">
-              <AdminPage initialTab="users" />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/users"
-          element={
-            <ProtectedRoute requiredRole="SUPER_ADMIN">
-              <AdminPage initialTab="users" />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/roles"
-          element={
-            <ProtectedRoute requiredRole="SUPER_ADMIN">
-              <AdminPage initialTab="roles" />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/departments"
-          element={
-            <ProtectedRoute requiredRole="SUPER_ADMIN">
-              <AdminPage initialTab="departments" />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/system"
-          element={
-            <ProtectedRoute requiredRole="SUPER_ADMIN">
-              <AdminPage initialTab="system" />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/data-import"
-          element={
-            <ProtectedRoute requiredRole="SUPER_ADMIN">
-              <AdminPage initialTab="data-import" />
-            </ProtectedRoute>
-          }
-        />
+        {/* Admin Hierarchy & Aliases */}
+        <Route path="/admin" element={<AdminPage initialTab="users" />} />
+        <Route path="/admin/users" element={<AdminPage initialTab="users" />} />
+        <Route path="/admin/roles" element={<AdminPage initialTab="roles" />} />
+        <Route path="/admin/departments" element={<AdminPage initialTab="departments" />} />
+        <Route path="/admin/system" element={<AdminPage initialTab="system" />} />
+        <Route path="/admin/data-import" element={<AdminPage initialTab="data-import" />} />
+        <Route path="/settings" element={<AdminPage initialTab="system" />} />
+        <Route path="/users" element={<AdminPage initialTab="users" />} />
+        <Route path="/roles" element={<AdminPage initialTab="roles" />} />
+        <Route path="/departments" element={<AdminPage initialTab="departments" />} />
       </Route>
 
       {/* 404 Catch-all */}

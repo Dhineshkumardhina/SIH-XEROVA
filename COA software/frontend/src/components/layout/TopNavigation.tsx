@@ -71,9 +71,9 @@ export const TopNavigation: React.FC = () => {
         <DemoBanner />
         <a
           href="/demo"
-          className="px-2.5 py-1 rounded-full border border-purple-500/40 bg-purple-500/20 text-purple-300 hover:text-white hover:bg-purple-600 text-[10px] font-bold tracking-wider uppercase flex items-center gap-1 transition-all"
+          className="px-2.5 py-1 rounded-full border border-purple-300 dark:border-purple-500/40 bg-purple-50 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 hover:text-white hover:bg-purple-600 text-[10px] font-bold tracking-wider uppercase flex items-center gap-1 transition-all"
         >
-          <Sparkles className="w-3 h-3 text-amber-300" />
+          <Sparkles className="w-3 h-3 text-amber-500 dark:text-amber-300" />
           <span>SIH DEMO HUB</span>
         </a>
         <button
@@ -81,11 +81,11 @@ export const TopNavigation: React.FC = () => {
           title={isDemoActive ? 'Disable Demo Navigation Mode' : 'Enable SIH Demo Navigation Mode'}
           className={`px-2.5 py-1 rounded-full border text-[10px] font-bold tracking-wider uppercase flex items-center gap-1.5 transition-all cursor-pointer ${
             isDemoActive
-              ? 'bg-blue-500/20 border-blue-400/50 text-blue-400 shadow-sm'
-              : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:text-slate-200'
+              ? 'bg-blue-50 dark:bg-blue-500/20 border-blue-300 dark:border-blue-400/50 text-blue-700 dark:text-blue-400 shadow-xs'
+              : 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
           }`}
         >
-          <span className={`w-2 h-2 rounded-full ${isDemoActive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+          <span className={`w-2 h-2 rounded-full ${isDemoActive ? 'bg-emerald-500 dark:bg-emerald-400 animate-pulse' : 'bg-slate-400 dark:bg-slate-500'}`} />
           <span>{isDemoActive ? 'DEMO MODE ON' : 'ENABLE DEMO MODE'}</span>
         </button>
       </div>

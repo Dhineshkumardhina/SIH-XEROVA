@@ -52,7 +52,7 @@ export const AuditPage: React.FC = () => {
       <PageHeader
         title="Security & Operational Audit Trail"
         subtitle="Cryptographically verified logging of administrative actions, block authorizations, and asset mutations."
-        breadcrumbs={[{ label: 'RAILOPT AI', href: '/dashboard' }, { label: 'Administration' }, { label: 'Audit' }]}
+        breadcrumbs={[{ label: 'RAILOPT AI', href: '/dashboard' }, { label: 'Administration', href: '/admin' }, { label: 'Audit' }]}
         actions={
           <Button variant="outline" size="sm" onClick={loadData} leftIcon={<RefreshCw className="w-3.5 h-3.5" />}>
             Refresh Audit Trail
