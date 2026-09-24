@@ -26,9 +26,3 @@ All comprehensive system documentation is located in [`COA software/docs/`](COA%
 - 🗺️ **[Future Roadmap](COA%20software/docs/FUTURE_ROADMAP.md)** — Extension pathway for enterprise FOIS-NET rollout, deep learning models, and 3D GIS twin.
 
 ---
-
-## Source Code & Installation
-
-The complete application codebase, setup scripts, and Docker configuration are located in the [`COA software/`](COA%20software/) directory.
-
-Refer to [`COA software/README.md`](COA%20software/README.md) for quick-start Docker commands and local development instructions.
